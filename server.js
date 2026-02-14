@@ -406,7 +406,7 @@ app.post('/api/download/pdf', (req, res) => {
     // ---- Title ----
     doc
         .fontSize(16)
-        .font('helvetica-bold')
+        .font('Helvetica-Bold')
         .text(lines[0], { align: 'center' });
 
     doc.moveDown(2);
@@ -418,14 +418,14 @@ app.post('/api/download/pdf', (req, res) => {
             doc
                 .moveDown(0.5)
                 .fontSize(11)
-                .font('helvetica-bold')
+                .font('Helvetica-Bold')
                 .text(line, { align: 'left' });
         } else {
             // Normal paragraph
             doc
                 .moveDown(0.3)
                 .fontSize(11)
-                .font('helvetica')
+                .font('Helvetica')
                 .text(line, {
                     align: 'justify',
                     lineGap: 4
@@ -437,7 +437,7 @@ app.post('/api/download/pdf', (req, res) => {
     doc.moveDown(2);
     doc
         .fontSize(8)
-        .font('helvetica')
+        .font('Helvetica')
         .text(
             'Disclaimer: This document is AI-generated and must be reviewed by a qualified legal professional.',
             { align: 'center' }
