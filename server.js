@@ -7,7 +7,7 @@
 require('dotenv').config();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const JWT_SECRET = "your_super_secret_key_change_this";
+const JWT_SECRET = process.env.JWT_SECRET || "your_super_secret_key_change_this";
 
 // 2️⃣ Imports
 const express = require('express');
@@ -522,8 +522,8 @@ app.listen(PORT, () => {
     console.log('\n🚀 ========================================');
     console.log('   Legal AI Backend Server Started!');
     console.log('========================================');
-    console.log(`📡 Server: http://localhost:${PORT}`);
-    console.log(`🔧 API endpoint: http://localhost:${PORT}/api/chat`);
-    console.log(`💚 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`📡 Server: https://legal-ai-2-japan-1.onrender.com}`);
+    console.log(`🔧 API endpoint: https://legal-ai-2-japan-1.onrender.com/api/chat`);
+    console.log(`💚 Health check: https://legal-ai-2-japan-1.onrender.com/api/health`);
     console.log('========================================\n');
 });
