@@ -1,120 +1,400 @@
-/* responsive.css - Responsive Design */
+/* responsive.css — Mobile-First Responsive Styles for SAMARTHAA-LEGAL */
 
-/* Tablet and below */
-@media (max-width: 1024px) {
-    .container {
-        padding: var(--spacing-md);
-    }
-    
-    h1 {
-        font-size: 2rem;
-    }
-    
-    .mode-selector {
-        grid-template-columns: 1fr;
-    }
+/* ══════════════════════════════════════════════════════
+   BASE MOBILE  (everything ≤ 480px)
+   These styles apply at the smallest screen sizes.
+   Larger breakpoints OVERRIDE below.
+══════════════════════════════════════════════════════ */
+
+/* ── Login ─────────────────────────────────────────── */
+.login-section {
+    padding: var(--space-5) var(--space-4);
+}
+.login-section h2 {
+    font-size: var(--text-lg);
+}
+.login-section input,
+.login-section button {
+    max-width: 100%;
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-    .container {
-        padding: var(--spacing-sm);
+/* ── Header ────────────────────────────────────────── */
+header {
+    padding: var(--space-10) var(--space-4) var(--space-6);
+}
+
+.header-content {
+    /* On mobile the logout button moves below header, so no right padding needed */
+    padding-right: 0;
+}
+
+header h1 {
+    font-size: 1.25rem;
+    word-break: break-word;
+    hyphens: auto;
+}
+header .tagline {
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+}
+
+/* ── Logout Button — sits below header on mobile ───── */
+#logoutBtn {
+    /* Take out of header flow on tiny screens */
+    position: static;
+    display: block;
+    width: 100%;
+    text-align: center;
+    border-radius: 0;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid rgba(201,168,76,0.25);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(201,168,76,0.08);
+    color: var(--color-gold);
+    font-size: var(--text-xs);
+}
+
+/* ── Container ─────────────────────────────────────── */
+.container {
+    padding: var(--space-4) var(--space-4);
+}
+
+/* ── Info box ──────────────────────────────────────── */
+.info-box {
+    padding: var(--space-3) var(--space-4);
+}
+.info-box ul li {
+    font-size: var(--text-xs);
+}
+
+/* ── Section title ─────────────────────────────────── */
+.section-title {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-4);
+}
+
+/* ── Mode Selector: single column on mobile ────────── */
+.mode-selector {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+}
+
+.mode-card {
+    padding: var(--space-4);
+}
+.mode-card h3 { font-size: var(--text-base); }
+.mode-card p  { font-size: var(--text-xs); }
+
+/* ── Config section ────────────────────────────────── */
+.config-section {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+}
+.config-section h2 {
+    font-size: var(--text-base);
+    margin-bottom: var(--space-4);
+}
+
+/* ── Inputs ────────────────────────────────────────── */
+.input-group {
+    margin-bottom: var(--space-4);
+}
+.input-group input[type="text"],
+.input-group input[type="email"],
+.input-group textarea,
+.input-group select {
+    /* iOS fix: ensure font-size >= 16px to prevent zoom */
+    font-size: 16px;
+    padding: var(--space-3);
+}
+.input-group textarea {
+    min-height: 100px;
+}
+
+/* ── Voice label row — stack on tiny screens ───────── */
+.field-label-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+/* ── Action buttons: full width stacked ────────────── */
+.action-buttons {
+    flex-direction: column;
+    gap: var(--space-3);
+}
+.btn-primary,
+.btn-secondary {
+    width: 100%;
+    justify-content: center;
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+}
+
+/* ── Result section ────────────────────────────────── */
+.result-section {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+}
+
+.result-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+.result-header h2 {
+    font-size: var(--text-base);
+    flex: none;
+}
+
+/* Result action buttons: full width on mobile */
+.copy-btn,
+.download-btn,
+.btn-readaloud {
+    width: 100%;
+    justify-content: center;
+    font-size: var(--text-sm);
+    min-height: 44px;
+}
+
+.result-content {
+    font-size: var(--text-xs);
+    padding: var(--space-3);
+    max-height: 55vh;
+    line-height: 1.7;
+}
+
+/* ── Footer ────────────────────────────────────────── */
+footer {
+    padding: var(--space-4);
+    margin-top: var(--space-6);
+}
+footer p {
+    font-size: 0.68rem;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   SMALL PHONES  480px +
+══════════════════════════════════════════════════════ */
+@media (min-width: 480px) {
+
+    header {
+        padding: var(--space-8) var(--space-5);
     }
-    
-    h1 {
-        font-size: 1.75rem;
+
+    header h1 {
+        font-size: var(--text-xl);
     }
-    
-    h2 {
-        font-size: 1.5rem;
+
+    /* Logout back to absolute inside header */
+    #logoutBtn {
+        position: absolute;
+        top: var(--space-3);
+        right: var(--space-4);
+        width: auto;
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(201,168,76,0.4);
+        padding: 5px 12px;
+        font-size: var(--text-xs);
+        background: rgba(201,168,76,0.15);
     }
-    
+
     .header-content {
-        padding: 0 var(--spacing-sm);
+        padding-right: 80px;
     }
-    
+
     .mode-selector {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-sm);
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-3);
     }
-    
+
     .action-buttons {
-        flex-direction: column;
+        flex-direction: row;
     }
-    
-    button {
-        width: 100%;
+    .btn-primary,
+    .btn-secondary {
+        width: auto;
+        flex: 1;
     }
-    
+
     .result-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-sm);
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
     }
-    
-    .copy-btn {
-        width: 100%;
+    .result-header h2 {
+        flex: 1 1 100%;
     }
-    
-    .result-content {
-        font-size: 0.875rem;
-        max-height: 400px;
+
+    .copy-btn,
+    .download-btn,
+    .btn-readaloud {
+        width: auto;
+        min-height: 36px;
     }
-    
+}
+
+
+/* ══════════════════════════════════════════════════════
+   TABLETS  768px +
+══════════════════════════════════════════════════════ */
+@media (min-width: 768px) {
+
+    header {
+        padding: var(--space-10) var(--space-8) var(--space-8);
+    }
+
+    header h1 {
+        font-size: var(--text-2xl);
+    }
+
+    #logoutBtn {
+        top: var(--space-4);
+        right: var(--space-6);
+        font-size: var(--text-sm);
+        padding: var(--space-2) var(--space-4);
+    }
+
+    .header-content {
+        padding-right: 100px;
+    }
+
+    .container {
+        padding: var(--space-8) var(--space-6);
+    }
+
+    .mode-selector {
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-4);
+    }
+
     .config-section {
-        padding: var(--spacing-md);
+        padding: var(--space-6);
     }
-    
-    .info-box {
-        padding: var(--spacing-sm);
+
+    .result-section {
+        padding: var(--space-6);
+    }
+
+    .result-header h2 {
+        flex: 1 1 auto;
+        margin-bottom: 0;
+    }
+
+    .result-content {
+        font-size: var(--text-sm);
+        padding: var(--space-5);
+        max-height: 65vh;
+    }
+
+    .action-buttons {
+        gap: var(--space-4);
+    }
+    .btn-primary,
+    .btn-secondary {
+        flex: none;
+        width: auto;
     }
 }
 
-/* Small Mobile */
-@media (max-width: 480px) {
-    h1 {
-        font-size: 1.5rem;
+
+/* ══════════════════════════════════════════════════════
+   DESKTOP  1024px +
+══════════════════════════════════════════════════════ */
+@media (min-width: 1024px) {
+
+    header h1 {
+        font-size: var(--text-3xl);
     }
-    
-    .tagline {
-        font-size: 0.875rem;
+
+    header .tagline {
+        font-size: var(--text-sm);
     }
-    
-    input[type="text"],
-    textarea,
-    select {
-        font-size: 0.875rem;
-        padding: 0.75rem;
+
+    .container {
+        padding: var(--space-10) var(--space-8);
     }
-    
-    textarea {
-        min-height: 120px;
+
+    .mode-card {
+        padding: var(--space-5) var(--space-6);
+    }
+    .mode-card h3 { font-size: var(--text-md); }
+    .mode-card p  { font-size: var(--text-sm); }
+
+    .result-content {
+        font-size: var(--text-sm);
+        max-height: 70vh;
     }
 }
 
-/* Print Styles */
+
+/* ══════════════════════════════════════════════════════
+   TOUCH DEVICE ENHANCEMENTS
+══════════════════════════════════════════════════════ */
+@media (hover: none) and (pointer: coarse) {
+    /* Increase all tap targets on touch devices */
+    .btn-mic-inline {
+        min-height: 36px;
+        padding: var(--space-2) var(--space-4);
+        font-size: var(--text-sm);
+    }
+
+    .mode-card {
+        /* Remove hover transform on touch — feels janky */
+        transition: border-color var(--transition-fast);
+    }
+    .mode-card:hover {
+        transform: none;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Bigger select arrow area */
+    .input-group select {
+        padding-right: var(--space-10);
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   PRINT
+══════════════════════════════════════════════════════ */
 @media print {
     header,
-    .config-section,
-    .mode-selector,
-    .action-buttons,
-    .loading,
-    .error-message,
     footer,
-    button {
+    #logoutBtn,
+    .mode-selector,
+    .config-section,
+    .info-box,
+    .action-buttons,
+    .result-header .copy-btn,
+    .result-header .download-btn,
+    .result-header .btn-readaloud,
+    #speakingIndicator {
         display: none !important;
     }
-    
+
     .result-section {
         display: block !important;
+        border: none;
         box-shadow: none;
-        border: 1px solid #000;
+        padding: 0;
     }
-    
+
     .result-content {
         max-height: none;
         overflow: visible;
+        font-size: 11pt;
+        line-height: 1.6;
         border: none;
         background: white;
+        padding: 0;
+    }
+
+    body {
+        background: white;
+        color: black;
     }
 }

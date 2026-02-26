@@ -1,65 +1,131 @@
-/* layout.css - Layout Specific Styles */
+/* layout.css — Page Structure & Layout for SAMARTHAA-LEGAL */
 
+/* ══════════════════════════════════════════════════════
+   PAGE WRAPPER / CONTAINER
+══════════════════════════════════════════════════════ */
 .container {
-    max-width: 1400px;
+    width: 100%;
+    max-width: var(--container-max);
     margin: 0 auto;
-    padding: var(--spacing-lg);
+    padding: var(--space-6) var(--space-5);
 }
 
+/* ══════════════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════════════ */
 header {
-    background: var(--primary);
-    color: white;
-    padding: var(--spacing-lg) 0;
-    box-shadow: var(--shadow-lg);
-    margin-bottom: var(--spacing-xl);
+    background: linear-gradient(135deg, var(--header-bg-from) 0%, var(--header-bg-to) 100%);
+    padding: var(--space-8) var(--space-5);
+    text-align: center;
+    position: relative;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+}
+
+header::after {
+    content: '';
+    display: block;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
 }
 
 .header-content {
-    max-width: 1400px;
+    max-width: var(--container-max);
     margin: 0 auto;
-    padding: 0 var(--spacing-lg);
+    /* Pad right so title doesn't overlap Logout button */
+    padding-right: 90px;
 }
 
-.header-content h1 {
-    color: white;
-    margin-bottom: var(--spacing-xs);
+header h1 {
+    color: var(--color-gold);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    line-height: 1.2;
 }
 
-.tagline {
-    font-size: 1rem;
-    opacity: 0.9;
-    font-weight: 400;
+header .tagline {
+    color: rgba(201,168,76,0.75);
+    font-size: var(--text-sm);
+    margin-top: var(--space-2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
+/* ══════════════════════════════════════════════════════
+   LOGOUT BUTTON
+══════════════════════════════════════════════════════ */
+#logoutBtn {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-5);
+    padding: var(--space-2) var(--space-4);
+    background: rgba(201,168,76,0.15);
+    color: var(--color-gold);
+    border: 1px solid rgba(201,168,76,0.4);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    z-index: var(--z-header);
+    white-space: nowrap;
+}
+#logoutBtn:hover {
+    background: var(--color-gold);
+    color: var(--color-white);
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION TITLE
+══════════════════════════════════════════════════════ */
 .section-title {
-    margin-bottom: var(--spacing-md);
-    font-size: 1.75rem;
+    font-size: var(--text-xl);
+    color: var(--color-maroon);
+    text-align: center;
+    margin-bottom: var(--space-5);
+    font-family: var(--font-serif);
 }
 
+/* ══════════════════════════════════════════════════════
+   MODE SELECTOR GRID
+══════════════════════════════════════════════════════ */
 .mode-selector {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
 }
 
+/* ══════════════════════════════════════════════════════
+   MODE FIELDS
+══════════════════════════════════════════════════════ */
 .mode-fields {
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 0.2s ease;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ══════════════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════════════ */
 footer {
+    background: var(--header-bg-from);
+    padding: var(--space-5) var(--space-5);
     text-align: center;
-    padding: var(--spacing-lg);
-    color: var(--text-light);
-    font-size: 0.9rem;
-    margin-top: 4rem;
+    margin-top: var(--space-8);
+    border-top: 1px solid rgba(201,168,76,0.2);
 }
 
 footer p {
-    margin-bottom: var(--spacing-xs);
+    color: rgba(201,168,76,0.6);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    max-width: 700px;
+    margin: 0 auto;
 }

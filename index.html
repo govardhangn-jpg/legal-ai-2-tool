@@ -2,87 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ANAMIKA, The Indian Legal AI Assistant</title>
-    
-    <!-- Google Fonts -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2c1a0e">
+    <meta name="description" content="SAMARTHAA-LEGAL — AI-powered Indian Legal Assistant for Contract Drafting, Case Research and Legal Opinions">
+    <title>SAMARTHAA-LEGAL : The Indian Legal AI Assistant</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- Stylesheets -->
+
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/responsive.css">
-    
-    <!-- Favicon -->
+
     <link rel="icon" type="image/png" href="assets/images/favicon.png">
 </head>
 <body>
-    <div id="loginSection" class="login-section">
-    <h2>🔐 Login Required</h2>
-    <input type="email" id="loginEmail" placeholder="Email">
-    <input type="password" id="loginPassword" placeholder="Password">
-    <button id="loginBtn">Login</button>
-    <div id="loginError" style="color:red;"></div>
-</div>
 
+    <!-- LOGIN -->
+    <div id="loginSection" class="login-section">
+        <h2>&#x1F510; Login Required</h2>
+        <input type="email"    id="loginEmail"    placeholder="Email" autocomplete="email">
+        <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+        <button id="loginBtn">Login</button>
+        <div id="loginError" role="alert"></div>
+    </div>
+
+    <!-- HEADER -->
     <header>
         <div class="header-content">
-            <h1>⚖️ ANAMIKA : The Indian Legal AI Assistant</h1>
-            <p class="tagline">Contract Drafting • Case Research • Legal Opinions</p>
+            <h1>&#x2696;&#xFE0F; SAMARTHAA-LEGAL</h1>
+            <p class="tagline">Contract Drafting &bull; Case Research &bull; Legal Opinions</p>
         </div>
+        <button id="logoutBtn">Logout</button>
     </header>
-    <button id="logoutBtn" style="
-    position:absolute;
-    top:20px;
-    right:30px;
-    padding:8px 14px;
-    cursor:pointer;
-">Logout</button>
 
-
+    <!-- MAIN APP -->
     <div class="container" id="mainApp" style="display:none;">
-        
 
-        <!-- Info Box -->
         <div class="info-box">
-            <h3>📋 How to Use</h3>
+            <h3>&#x1F4CB; How to Use</h3>
             <ul>
-                <li><strong>Contract Drafting:</strong> Specify contract type and key terms to generate comprehensive legal drafts</li>
-                <li><strong>Case Research:</strong> Enter legal issues, statutes, or case facts to get relevant case law and precedents</li>
-                <li><strong>Legal Opinion:</strong> Describe your legal query to receive detailed analysis with applicable laws</li>
+                <li><strong>Contract Drafting:</strong> Select contract type and fill in key terms &mdash; tap &#x1F3A4; to speak any field.</li>
+                <li><strong>Case Research:</strong> Enter legal issue and context &mdash; voice input on every field.</li>
+                <li><strong>Legal Opinion:</strong> Describe your matter, type or speak, then &#x1F50A; listen to the result via ElevenLabs.</li>
             </ul>
         </div>
 
-        <!-- Mode Selection -->
         <h2 class="section-title">Select Legal Service</h2>
-        
+
         <div class="mode-selector">
             <div class="mode-card" data-mode="contract">
-                <h3>📝 Contract Drafting</h3>
-                <p>Generate comprehensive legal contracts including sale deeds, lease agreements, employment contracts, NDAs, and more tailored to Indian law.</p>
+                <h3>&#x1F4DD; Contract Drafting</h3>
+                <p>Generate sale deeds, lease agreements, NDAs, employment contracts and more. Voice input enabled.</p>
             </div>
-            
             <div class="mode-card" data-mode="research">
-                <h3>🔍 Case Research</h3>
-                <p>Research relevant case law, precedents, and legal principles. Get summaries of landmark judgments and their applicability to your case.</p>
+                <h3>&#x1F50D; Case Research</h3>
+                <p>Research Indian case law and precedents. Speak your query hands-free and get results read aloud.</p>
             </div>
-            
             <div class="mode-card" data-mode="opinion">
-                <h3>⚖️ Legal Opinion</h3>
-                <p>Receive detailed legal opinions on complex matters with analysis of applicable statutes, case law, and recommended courses of action.</p>
+                <h3>&#x2696;&#xFE0F; Legal Opinion</h3>
+                <p>Detailed legal opinions with full voice interaction &mdash; speak your facts, listen to the analysis.</p>
             </div>
         </div>
 
-        <!-- Input Section -->
-        <div class="config-section" id="inputSection" style="display: none;">
+        <!-- INPUT SECTION -->
+        <div class="config-section" id="inputSection" style="display:none;">
             <h2 id="sectionTitle">Legal Query</h2>
-            
-            <!-- Contract Fields -->
-            <div id="contractFields" class="mode-fields" style="display: none;">
+
+            <!-- CONTRACT FIELDS -->
+            <div id="contractFields" class="mode-fields" style="display:none;">
                 <div class="input-group">
                     <label for="contractType">Contract Type</label>
                     <select id="contractType">
@@ -100,25 +91,39 @@
                         <option value="Other">Other (specify in details)</option>
                     </select>
                 </div>
-                
-                <div class="input-group">
-                    <label for="contractDetails">Contract Details & Key Terms</label>
-                    <input type="text" id="contractDetails" placeholder="e.g., Pls enter relevant parties, obligations, payment terms, duration, etc.">
+                <div class="input-group voice-panel visible" id="voicePanel_contract">
+                    <div class="field-label-row">
+                        <label for="contractDetails">Contract Details &amp; Key Terms</label>
+                        <button class="btn-mic-inline" id="micContractDetails">&#x1F3A4; Speak</button>
+                    </div>
+                    <input type="text" id="contractDetails"
+                           placeholder="Parties, obligations, payment terms, duration &mdash; or tap mic">
+                    <div class="voice-status" id="micContractDetails_status" aria-live="polite"></div>
                 </div>
             </div>
 
-            <!-- Research Fields -->
-            <div id="researchFields" class="mode-fields" style="display: none;">
-                <div class="input-group">
-                    <label for="legalIssue">Legal Issue / Topic</label>
-                    <input type="text" id="legalIssue" placeholder="e.g., Anticipatory Bail under Section 438 CrPC">
+            <!-- RESEARCH FIELDS -->
+            <div id="researchFields" class="mode-fields" style="display:none;">
+                <div class="input-group voice-panel visible" id="voicePanel_research">
+                    <div class="field-label-row">
+                        <label for="legalIssue">Legal Issue / Topic</label>
+                        <button class="btn-mic-inline" id="micLegalIssue">&#x1F3A4; Speak</button>
+                    </div>
+                    <input type="text" id="legalIssue"
+                           placeholder="e.g., Anticipatory Bail under Section 438 CrPC">
+                    <div class="voice-status" id="micLegalIssue_status" aria-live="polite"></div>
+
+                    <div style="margin-top:16px;">
+                        <div class="field-label-row">
+                            <label for="researchQuery">Research Query &amp; Context</label>
+                            <button class="btn-mic-inline" id="micResearchQuery">&#x1F3A4; Speak</button>
+                        </div>
+                        <textarea id="researchQuery"
+                                  placeholder="Describe the legal issue and context..."></textarea>
+                        <div class="voice-status" id="micResearchQuery_status" aria-live="polite"></div>
+                    </div>
                 </div>
-                
-                <div class="input-group">
-                    <label for="researchQuery">Research Query & Context</label>
-                    <textarea id="researchQuery" placeholder="Describe the legal issue and context..."></textarea>
-                </div>
-                
+
                 <div class="input-group">
                     <label for="jurisdiction">Preferred Jurisdiction</label>
                     <select id="jurisdiction">
@@ -134,62 +139,84 @@
                 </div>
             </div>
 
-            <!-- Opinion Fields -->
-            <div id="opinionFields" class="mode-fields" style="display: none;">
-                <div class="input-group">
-                    <label for="opinionTopic">Legal Matter / Question</label>
-                    <input type="text" id="opinionTopic" placeholder="e.g., Enforceability of Oral Agreement for Property Sale">
-                </div>
-                
-                <div class="input-group">
-                    <label for="opinionQuery">Detailed Query & Facts</label>
-                    <textarea id="opinionQuery" placeholder="Provide comprehensive details..."></textarea>
-                </div>
-                
-                <div class="input-group">
-                    <label for="applicableLaws">Applicable Laws (if known)</label>
-                    <input type="text" id="applicableLaws" placeholder="e.g., Transfer of Property Act 1882, Indian Contract Act 1872">
+            <!-- OPINION FIELDS -->
+            <div id="opinionFields" class="mode-fields" style="display:none;">
+                <div class="input-group voice-panel visible" id="voicePanel_opinion">
+                    <div class="field-label-row">
+                        <label for="opinionTopic">Legal Matter / Question</label>
+                        <button class="btn-mic-inline" id="micOpinionTopic">&#x1F3A4; Speak</button>
+                    </div>
+                    <input type="text" id="opinionTopic"
+                           placeholder="e.g., Enforceability of Oral Agreement for Property Sale">
+                    <div class="voice-status" id="micOpinionTopic_status" aria-live="polite"></div>
+
+                    <div style="margin-top:16px;">
+                        <div class="field-label-row">
+                            <label for="opinionQuery">Detailed Query &amp; Facts</label>
+                            <button class="btn-mic-inline" id="micOpinionQuery">&#x1F3A4; Speak</button>
+                        </div>
+                        <textarea id="opinionQuery"
+                                  placeholder="Provide comprehensive details, or tap mic to speak your facts..."></textarea>
+                        <div class="voice-status" id="micOpinionQuery_status" aria-live="polite"></div>
+                    </div>
+
+                    <div style="margin-top:16px;">
+                        <label for="applicableLaws" style="display:block;font-size:0.82rem;font-weight:600;color:#5a4e38;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Applicable Laws (if known)</label>
+                        <input type="text" id="applicableLaws"
+                               style="width:100%;padding:12px 16px;font-size:16px;border:1.5px solid #d4c9a8;border-radius:8px;"
+                               placeholder="e.g., Transfer of Property Act 1882, Indian Contract Act 1872">
+                    </div>
                 </div>
             </div>
 
             <!-- Action Buttons -->
             <div class="action-buttons">
-                <button class="btn-primary" id="generateBtn">Generate Legal Document</button>
+                <button class="btn-primary"   id="generateBtn">Generate Legal Document</button>
                 <button class="btn-secondary" id="clearBtn">Clear Form</button>
             </div>
 
-            <!-- Loading Indicator -->
-            <div class="loading" id="loadingIndicator">
+            <div class="loading" id="loadingIndicator" role="status">
                 <div class="spinner"></div>
-                <span>Processing your request...</span>
+                <span>Processing your request&hellip;</span>
             </div>
 
-            <!-- Error Message -->
-            <div class="error-message" id="errorMessage"></div>
+            <div class="error-message" id="errorMessage" role="alert"></div>
         </div>
 
-        <!-- Result Section -->
+        <!-- RESULT SECTION -->
         <div class="result-section" id="resultSection">
             <div class="result-header">
                 <h2 id="resultTitle">Generated Result</h2>
-                <button class="copy-btn" id="copyBtn">📋 Copy to Clipboard</button>
-                <button class="download-btn" id="downloadWordBtn">📥 Download Word</button>
-                <button class="download-btn" id="downloadPdfBtn">📥 Download PDF</button>
+                <button class="btn-readaloud" id="btnReadAloud">&#x1F50A; Read Aloud</button>
+                <span class="elevenlabs-badge" id="elBadge" style="display:none;">powered by ElevenLabs</span>
+                <button class="copy-btn"     id="copyBtn">&#x1F4CB; Copy</button>
+                <button class="download-btn" id="downloadWordBtn" disabled>&#x1F4E5; Word</button>
+                <button class="download-btn" id="downloadPdfBtn"  disabled>&#x1F4E5; PDF</button>
             </div>
-            <div class="result-content" id="resultContent"></div>
+
+            <div id="speakingIndicator">
+                <span class="speak-indicator">
+                    <span></span><span></span><span></span><span></span><span></span>
+                </span>
+                <span style="font-size:0.82rem;color:#1a5c2a;font-weight:600;margin-left:8px;">
+                    Reading aloud via ElevenLabs&hellip;
+                </span>
+            </div>
+
+            <div class="result-content" id="resultContent" tabindex="0"></div>
         </div>
+
     </div>
 
-    <!-- Footer -->
     <footer>
-        <p><strong>Disclaimer:</strong> This AI tool provides general legal information and drafts. Always consult with a qualified legal professional before using any AI-generated legal content. Not a substitute for professional legal advice.</p>
+        <p><strong>Disclaimer:</strong> This AI tool provides general legal information and drafts. Always consult a qualified legal professional before acting on any AI-generated content. Not a substitute for professional legal advice.</p>
     </footer>
 
-    <!-- JavaScript Files -->
     <script src="./js/config.js"></script>
     <script src="./js/prompts.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/ui.js"></script>
+    <script src="./js/voice.js"></script>
     <script src="./js/app.js"></script>
 </body>
 </html>

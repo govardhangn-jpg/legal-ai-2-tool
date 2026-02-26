@@ -1,119 +1,72 @@
-/* base.css - Base Styles and Reset */
+/* base.css — Reset & Base Typography for SAMARTHAA-LEGAL */
 
-* {
+*, *::before, *::after {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;  /* prevent iOS font inflation */
 }
 
 body {
-    font-family: var(--font-body);
-    background: linear-gradient(135deg, var(--bg) 0%, #ebe8dd 100%);
-    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    color: var(--color-text-primary);
+    background-color: var(--color-bg);
     min-height: 100vh;
-    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* Typography */
+/* ── Typography ─────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    color: var(--secondary);
-    line-height: 1.2;
+    font-family: var(--font-serif);
+    line-height: var(--leading-tight);
+    color: var(--color-text-primary);
 }
 
-h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-}
+h1 { font-size: var(--text-2xl); font-weight: 700; }
+h2 { font-size: var(--text-xl);  font-weight: 600; }
+h3 { font-size: var(--text-lg);  font-weight: 600; }
+h4 { font-size: var(--text-md);  font-weight: 600; }
 
-h2 {
-    font-size: 1.75rem;
-    font-weight: 600;
-}
-
-h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-}
+p  { line-height: var(--leading-normal); }
+ul { list-style: none; }
 
 a {
-    color: var(--secondary);
+    color: var(--color-gold);
     text-decoration: none;
-    transition: color var(--transition-fast);
+}
+a:hover { text-decoration: underline; }
+
+img, svg { display: block; max-width: 100%; }
+
+input, textarea, select, button {
+    font-family: inherit;
+    font-size: inherit;
 }
 
-a:hover {
-    color: #6d3611;
-    text-decoration: underline;
+button { cursor: pointer; }
+
+/* ── Scrollbar (WebKit) ─────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-alt); }
+::-webkit-scrollbar-thumb { background: var(--color-gold); border-radius: var(--radius-pill); }
+
+/* ── Selection ──────────────────────────────────────────── */
+::selection {
+    background: var(--color-gold-light);
+    color: var(--color-maroon-dark);
 }
 
-/* Form Elements */
-input[type="text"],
-textarea,
-select {
-    width: 100%;
-    padding: 0.875rem;
-    border: 2px solid var(--border);
-    border-radius: var(--radius-md);
-    font-family: var(--font-body);
-    font-size: 0.95rem;
-    transition: all var(--transition-normal);
-    background: var(--bg);
-}
-
-input[type="text"]:focus,
-textarea:focus,
-select:focus {
-    outline: none;
-    border-color: var(--secondary);
-    box-shadow: 0 0 0 3px rgba(139, 69, 19, 0.1);
-}
-
-textarea {
-    min-height: 150px;
-    resize: vertical;
-}
-
-label {
-    display: block;
-    margin-bottom: var(--spacing-xs);
-    font-weight: 600;
-    color: var(--text);
-    font-size: 0.95rem;
-}
-
-/* Utility Classes */
-.required {
-    color: var(--error);
-}
-
-.help-text {
-    color: var(--text-light);
-    display: block;
-    margin-top: var(--spacing-xs);
-    font-size: 0.875rem;
-}
-
-.copyright {
-    margin-top: var(--spacing-sm);
-}
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--bg);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--secondary);
+/* ── Focus outline ──────────────────────────────────────── */
+:focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
 }

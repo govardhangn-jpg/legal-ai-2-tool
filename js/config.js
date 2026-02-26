@@ -1,11 +1,14 @@
 // config.js - Configuration and Constants
+// SAMARTHAA-LEGAL
 
-// Make CONFIG global
 window.CONFIG = {
     // Current mode
     currentMode: null,
 
-    // API Configuration (for backend proxy)
+    // App name
+    APP_NAME: 'SAMARTHAA-LEGAL',
+
+    // API Configuration (backend proxy)
     API: {
         BACKEND_URL: 'https://legal-ai-2-tool.onrender.com/api/chat',
         HEALTH_CHECK: 'https://legal-ai-2-tool.onrender.com/api/health'
@@ -30,7 +33,6 @@ window.CONFIG = {
         }
     },
 
-    // Contract types
     CONTRACT_TYPES: [
         'Sale Deed',
         'Lease Agreement',
@@ -58,18 +60,18 @@ window.CONFIG = {
     TITLES: {
         contract: {
             section: '📝 Contract Details',
-            button: 'Generate Contract',
-            result: '📝 Contract Draft'
+            button:  'Generate Contract',
+            result:  '📝 Contract Draft'
         },
         research: {
             section: '🔍 Case Research Query',
-            button: 'Research Cases',
-            result: '🔍 Case Research Results'
+            button:  'Research Cases',
+            result:  '🔍 Case Research Results'
         },
         opinion: {
             section: '⚖️ Legal Opinion Request',
-            button: 'Generate Opinion',
-            result: '⚖️ Legal Opinion'
+            button:  'Generate Opinion',
+            result:  '⚖️ Legal Opinion'
         }
     },
 
@@ -78,27 +80,24 @@ window.CONFIG = {
         INCOMPLETE_FORM: {
             contract: 'Please select contract type and provide details',
             research: 'Please provide legal issue and research query',
-            opinion: 'Please provide legal matter and detailed query'
+            opinion:  'Please provide legal matter and detailed query'
         },
-        PROCESSING: 'Processing your request...',
+        PROCESSING:   'Processing your request...',
         ERROR_PREFIX: 'Error: '
     },
 
-    // Error messages
     ERRORS: {
-        NO_MODE: 'Please select a legal service mode first.',
-        EMPTY_FIELDS: 'Please fill in all required fields.',
-        API_ERROR: 'Error communicating with AI service. Please try again.',
-        NETWORK_ERROR: 'Network error. Please check your internet connection and ensure the backend server is running.',
-        BACKEND_DOWN: 'Backend server is not running. Please start the backend server first.'
+        NO_MODE:       'Please select a legal service mode first.',
+        EMPTY_FIELDS:  'Please fill in all required fields.',
+        API_ERROR:     'Error communicating with AI service. Please try again.',
+        NETWORK_ERROR: 'Network error. Please check your connection.',
+        BACKEND_DOWN:  'Backend server is not running.'
     },
 
-    // Success messages
     SUCCESS: {
         GENERATED: 'Document generated successfully!',
-        COPIED: 'Content copied to clipboard!'
+        COPIED:    'Content copied to clipboard!'
     }
 };
 
-// Also create const reference for backward compatibility
 const CONFIG = window.CONFIG;

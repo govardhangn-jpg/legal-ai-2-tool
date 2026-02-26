@@ -1,12 +1,9 @@
 // app.js - Application Entry Point
+// SAMARTHAA-LEGAL
 
-/**
- * Initialize application when DOM is ready
- */
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Indian Legal AI Assistant - Initializing...');
+    console.log('🚀 SAMARTHAA-LEGAL - Initializing...');
 
-    // Safety check: UI must already be loaded
     if (!window.UI) {
         console.error('❌ UI is not loaded. Check script order in index.html.');
         return;
@@ -15,7 +12,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check backend health
     console.log('🔍 Checking backend server...');
     let backendHealthy = false;
-
     try {
         backendHealthy = await checkBackendHealth();
     } catch (err) {
@@ -29,130 +25,117 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('✅ Backend server is running');
     }
 
-    // Initialize UI (ONLY ONCE)
+    // Initialize UI
     UI.init();
 
-    console.log('✅ Application initialized successfully');
+    console.log('✅ SAMARTHAA-LEGAL initialized');
 
+    // ── LOGOUT ──────────────────────────────────────────────────────
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            // Stop voice if active
+            if (window.Voice) {
+                window.Voice.stopSpeaking();
+                window.Voice.stopRecording();
+            }
+            localStorage.removeItem('token');
+            document.getElementById('mainApp').style.display    = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+            logoutBtn.style.display = 'none';
+        });
+    }
 
-    // ================= LOGOUT SYSTEM =================
+    // ── LOGIN ────────────────────────────────────────────────────────
+    const loginBtn     = document.getElementById('loginBtn');
+    const loginSection = document.getElementById('loginSection');
+    const mainApp      = document.getElementById('mainApp');
 
-const logoutBtn = document.getElementById("logoutBtn");
+    if (loginBtn) {
+        // Auto-login if valid token exists
+        const token = localStorage.getItem('token');
+        if (token) {
+            loginSection.style.display = 'none';
+            mainApp.style.display      = 'block';
+            if (logoutBtn) logoutBtn.style.display = 'block';
+        } else {
+            if (logoutBtn) logoutBtn.style.display = 'none';
+        }
 
-if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-        localStorage.removeItem("token");
-        document.getElementById("mainApp").style.display = "none";
-        document.getElementById("loginSection").style.display = "block";
-        logoutBtn.style.display = "none";
-    });
-}
+        loginBtn.addEventListener('click', async () => {
+            const email    = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errorEl  = document.getElementById('loginError');
 
-
-    // ================= LOGIN SYSTEM =================
-
-const loginBtn = document.getElementById("loginBtn");
-const loginSection = document.getElementById("loginSection");
-const mainApp = document.getElementById("mainApp");
-
-if (loginBtn) {
-
-    // Check if token already exists
-    const token = localStorage.getItem("token");
-
-    if (token) {
-    loginSection.style.display = "none";
-    mainApp.style.display = "block";
-    logoutBtn.style.display = "block";
-} else {
-    logoutBtn.style.display = "none";
-}
-
-
-    loginBtn.addEventListener("click", async () => {
-
-        const email = document.getElementById("loginEmail").value;
-        const password = document.getElementById("loginPassword").value;
-
-        try {
-            const response = await fetch("https://legal-ai-2-tool.onrender.com/api/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                localStorage.setItem("token", data.token);
-                loginSection.style.display = "none";
-                mainApp.style.display = "block";
-                logoutBtn.style.display = "block";
-            } else {
-                document.getElementById("loginError").innerText = data.message;
+            if (!email || !password) {
+                errorEl.innerText = 'Please enter email and password.';
+                return;
             }
 
-        } catch (error) {
-            document.getElementById("loginError").innerText = "Login failed";
-        }
-    });
-}
+            try {
+                const response = await fetch('https://legal-ai-2-tool.onrender.com/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
 
+                const data = await response.json();
 
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    loginSection.style.display = 'none';
+                    mainApp.style.display      = 'block';
+                    if (logoutBtn) logoutBtn.style.display = 'block';
+                    errorEl.innerText = '';
+                } else {
+                    errorEl.innerText = data.message || 'Login failed';
+                }
+            } catch (error) {
+                errorEl.innerText = 'Login failed. Please check your connection.';
+            }
+        });
+
+        // Allow Enter key on password field
+        document.getElementById('loginPassword').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+    }
 });
 
-/**
- * Show warning if backend is not running
- */
+// ── Backend warning ────────────────────────────────────────────────────
 function showBackendWarning() {
     const warningDiv = document.createElement('div');
-    warningDiv.className = 'error-message';
-    warningDiv.style.display = 'block';
-    warningDiv.style.margin = '20px auto';
+    warningDiv.className   = 'error-message';
+    warningDiv.style.display  = 'block';
+    warningDiv.style.margin   = '20px auto';
     warningDiv.style.maxWidth = '800px';
     warningDiv.innerHTML = `
         <strong>⚠️ Backend Server Not Running</strong><br><br>
-        The backend server is not responding. Please ensure you have:<br>
-        1. Started the backend server: <code>cd backend && npm start</code><br>
-        2. Backend is running on <code>http://localhost:5000</code><br><br>
-        See <strong>README.md</strong> for complete setup instructions.
+        The backend server is not responding. Please ensure:<br>
+        1. Started the backend server: <code>npm start</code><br>
+        2. Backend is running on <code>http://localhost:5000</code>
     `;
-
     const container = document.querySelector('.container');
-    if (container) {
-        container.insertBefore(warningDiv, container.firstChild);
-    }
+    if (container) container.insertBefore(warningDiv, container.firstChild);
 }
 
-/**
- * Handle global JS errors
- */
+// ── Global error handler ───────────────────────────────────────────────
 window.addEventListener('error', (event) => {
     console.error('Global error:', event.error);
 });
 
-/**
- * Check browser compatibility
- */
-function checkBrowserCompatibility() {
+// ── Browser compatibility check ────────────────────────────────────────
+(function checkBrowserCompatibility() {
     const features = {
-        fetch: typeof fetch !== 'undefined',
-        promises: typeof Promise !== 'undefined',
-        classList: 'classList' in document.createElement('div'),
+        fetch:        typeof fetch !== 'undefined',
+        promises:     typeof Promise !== 'undefined',
+        classList:    'classList' in document.createElement('div'),
         localStorage: typeof localStorage !== 'undefined'
     };
-
     const unsupported = Object.entries(features)
-        .filter(([, supported]) => !supported)
-        .map(([feature]) => feature);
-
+        .filter(([, ok]) => !ok)
+        .map(([f]) => f);
     if (unsupported.length > 0) {
         console.warn('Unsupported browser features:', unsupported);
-        return false;
     }
-
-    return true;
-}
-
-// Run compatibility check immediately
-checkBrowserCompatibility();
+})();

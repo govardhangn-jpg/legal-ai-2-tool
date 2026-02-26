@@ -1,42 +1,88 @@
-/* variables.css - CSS Custom Properties */
+/* variables.css — Design Tokens for SAMARTHAA-LEGAL */
 
 :root {
-    /* Colors */
-    --primary: #1a1a2e;
-    --secondary: #8b4513;
-    --accent: #d4af37;
-    --bg: #f8f6f0;
-    --card-bg: #ffffff;
-    --text: #2d2d2d;
-    --text-light: #666;
-    --border: #d4c5b0;
-    --success: #2d5016;
-    --error: #8b1a1a;
-    
-    /* Typography */
-    --font-display: 'Crimson Pro', serif;
-    --font-body: 'IBM Plex Sans', sans-serif;
-    
-    /* Spacing */
-    --spacing-xs: 0.5rem;
-    --spacing-sm: 1rem;
-    --spacing-md: 1.5rem;
-    --spacing-lg: 2rem;
-    --spacing-xl: 3rem;
-    
-    /* Border Radius */
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 12px;
-    
-    /* Shadows */
-    --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-    --shadow-md: 0 2px 12px rgba(0,0,0,0.08);
-    --shadow-lg: 0 4px 20px rgba(0,0,0,0.15);
-    --shadow-hover: 0 8px 24px rgba(139, 69, 19, 0.15);
-    
-    /* Transitions */
-    --transition-fast: 0.2s ease;
-    --transition-normal: 0.3s ease;
-    --transition-slow: 0.5s ease;
+    /* ── Brand Colours ────────────────────────────────── */
+    --color-gold:          #c9a84c;
+    --color-gold-dark:     #a8872e;
+    --color-gold-light:    #f0e0a8;
+    --color-gold-bg:       #faf7ef;
+
+    --color-maroon:        #7a3e1a;
+    --color-maroon-dark:   #5c2e10;
+
+    --color-green:         #1a5c2a;
+    --color-green-dark:    #134a20;
+
+    --color-red:           #d9534f;
+    --color-red-dark:      #b52b27;
+
+    /* ── Neutrals ─────────────────────────────────────── */
+    --color-white:         #ffffff;
+    --color-bg:            #f5f0e8;
+    --color-bg-alt:        #ede8dc;
+    --color-surface:       #ffffff;
+    --color-border:        #d4c9a8;
+    --color-border-light:  #e8e0cc;
+
+    --color-text-primary:  #2c2416;
+    --color-text-secondary:#5a4e38;
+    --color-text-muted:    #8a7a60;
+
+    /* ── Header ───────────────────────────────────────── */
+    --header-bg-from:      #2c1a0e;
+    --header-bg-to:        #4a2c14;
+
+    /* ── Typography ───────────────────────────────────── */
+    --font-serif:   'Crimson Pro', Georgia, serif;
+    --font-sans:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+
+    --text-xs:    0.72rem;
+    --text-sm:    0.82rem;
+    --text-base:  1rem;
+    --text-md:    1.1rem;
+    --text-lg:    1.25rem;
+    --text-xl:    1.5rem;
+    --text-2xl:   1.85rem;
+    --text-3xl:   2.2rem;
+
+    --leading-tight:  1.25;
+    --leading-normal: 1.6;
+    --leading-loose:  1.8;
+
+    /* ── Spacing ──────────────────────────────────────── */
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3:  12px;
+    --space-4:  16px;
+    --space-5:  20px;
+    --space-6:  24px;
+    --space-8:  32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    /* ── Radii ────────────────────────────────────────── */
+    --radius-sm:  4px;
+    --radius-md:  8px;
+    --radius-lg:  12px;
+    --radius-xl:  16px;
+    --radius-pill:9999px;
+
+    /* ── Shadows ──────────────────────────────────────── */
+    --shadow-sm:  0 1px 3px rgba(44,26,14,0.08);
+    --shadow-md:  0 4px 12px rgba(44,26,14,0.12);
+    --shadow-lg:  0 8px 24px rgba(44,26,14,0.15);
+
+    /* ── Transitions ──────────────────────────────────── */
+    --transition-fast:   0.15s ease;
+    --transition-normal: 0.25s ease;
+
+    /* ── Layout ───────────────────────────────────────── */
+    --container-max:     900px;
+    --header-height:     auto;
+
+    /* ── Z-index ──────────────────────────────────────── */
+    --z-header:   100;
+    --z-modal:    200;
+    --z-toast:    300;
 }
