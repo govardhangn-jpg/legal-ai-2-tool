@@ -84,6 +84,9 @@ const UI = {
         // Notify voice module
         if (window.Voice) window.Voice.onModeChange(mode);
 
+        // Notify chat assistant of mode change
+        if (window.ChatAssistant) window.ChatAssistant.onModeChange(mode);
+
         this.elements.inputSection.scrollIntoView({ behavior: 'smooth' });
     },
 
@@ -157,6 +160,11 @@ const UI = {
 
         // Show Read Aloud for ALL modes
         if (window.Voice) window.Voice.showReadAloud();
+
+        // Notify chat assistant of new document context
+        if (window.ChatAssistant) {
+            window.ChatAssistant.setDocumentContext(this.selectedMode, result);
+        }
 
         // Show ElevenLabs badge
         if (this.elements.elBadge) this.elements.elBadge.style.display = 'inline';

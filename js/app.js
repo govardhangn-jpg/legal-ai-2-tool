@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('mainApp').style.display    = 'none';
             document.getElementById('loginSection').style.display = 'block';
             logoutBtn.style.display = 'none';
+            if (window.ChatAssistant) window.ChatAssistant.hideTrigger();
         });
     }
 
@@ -58,6 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             loginSection.style.display = 'none';
             mainApp.style.display      = 'block';
             if (logoutBtn) logoutBtn.style.display = 'block';
+            if (window.ChatAssistant) window.ChatAssistant.showTrigger();
         } else {
             if (logoutBtn) logoutBtn.style.display = 'none';
         }
