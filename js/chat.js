@@ -402,25 +402,36 @@ const ChatAssistant = (() => {
                     micBtn.classList.add('recording');
                     micBtn.title = 'Stop recording';
                     micBtn.innerHTML = '⏹';
+                    chatInput.placeholder = 'Listening…';
                 };
 
                 recognition.onresult = (event) => {
                     let interim = '';
                     for (let i = event.resultIndex; i < event.results.length; i++) {
                         const t = event.results[i][0].transcript;
-                        if (event.results[i].isFinal) finalText += t;
-                        else interim += t;
+                        if (event.results[i].isFinal) {
+                            finalText += (finalText ? ' ' : '') + t.trim();
+                        } else {
+                            interim += t;
+                        }
                     }
-                    chatInput.value = finalText + interim;
+                    chatInput.value = finalText + (interim ? ' ' + interim : '');
                     autoResizeInput();
                 };
 
-                recognition.onerror = () => stopRecording();
+                recognition.onerror = (e) => {
+                    console.warn('Speech recognition error:', e.error);
+                    stopRecording();
+                };
 
                 recognition.onend = () => {
+                    chatInput.placeholder = 'Ask about Indian law or your document…';
                     stopRecording();
-                    // Auto-send if we captured something
-                    if (chatInput.value.trim()) sendMessage();
+                    // Small delay to ensure finalText is fully committed
+                    setTimeout(() => {
+                        const val = chatInput.value.trim();
+                        if (val) sendMessage();
+                    }, 200);
                 };
 
                 recognition.start();

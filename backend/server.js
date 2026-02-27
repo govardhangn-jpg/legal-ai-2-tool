@@ -29,6 +29,7 @@ const PORT               = process.env.PORT             || 5000;
 const ANTHROPIC_API_KEY  = process.env.ANTHROPIC_API_KEY;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'; // default: "Sarah"
+console.log(`🎙️  ElevenLabs Voice ID: ${ELEVENLABS_VOICE_ID}`);
 
 // 4️⃣ Validate keys
 if (!ANTHROPIC_API_KEY)  console.warn('⚠️  ANTHROPIC_API_KEY not set in .env');
@@ -58,7 +59,7 @@ const users = [
 //   Middleware
 // =====================================================
 const allowedOrigins = [
-    'https://legal-ai-2-tool-1.onrender.com',
+    'https://legal-ai-2-tool.onrender.com',
     'http://localhost:3000',
     'http://localhost:5000',
     'http://127.0.0.1:5500',
