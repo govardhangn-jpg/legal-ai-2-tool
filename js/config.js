@@ -10,8 +10,8 @@ window.CONFIG = {
 
     // API Configuration (backend proxy)
     API: {
-        BACKEND_URL: 'https://legal-ai-2-tool.onrender.com/api/chat',
-        HEALTH_CHECK: 'https://legal-ai-2-tool.onrender.com/api/health'
+        BACKEND_URL: 'https://legal-ai-2-tool-1.onrender.com/api/chat',
+        HEALTH_CHECK: 'https://legal-ai-2-tool-1.onrender.com/api/health'
     },
 
     // Mode titles and descriptions
