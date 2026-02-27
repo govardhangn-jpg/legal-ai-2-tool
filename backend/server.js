@@ -58,7 +58,7 @@ const users = [
 //   Middleware
 // =====================================================
 const allowedOrigins = [
-    'https://legal-ai-2-tool.onrender.com',
+    'https://legal-ai-2-tool-1.onrender.com',
     'http://localhost:3000',
     'http://localhost:5000',
     'http://127.0.0.1:5500',

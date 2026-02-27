@@ -239,7 +239,7 @@ const ChatAssistant = (() => {
         showTyping();
 
         try {
-            const baseUrl = 'https://legal-ai-2-tool.onrender.com';
+            const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
 
             const response = await fetch(`${baseUrl}/api/chat-assistant`, {
                 method: 'POST',
