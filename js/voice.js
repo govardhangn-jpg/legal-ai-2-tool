@@ -189,9 +189,14 @@ const Voice = (() => {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const decoded = await audioContext.decodeAudioData(arrayBuffer);
 
+            // GainNode for volume boost (1.0 = normal, 2.0 = double, 3.0 = triple)
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 2.5;
+            gainNode.connect(audioContext.destination);
+
             audioSource          = audioContext.createBufferSource();
             audioSource.buffer   = decoded;
-            audioSource.connect(audioContext.destination);
+            audioSource.connect(gainNode);
 
             audioSource.onended = () => finishSpeaking();
             audioSource.start(0);

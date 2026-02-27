@@ -329,9 +329,14 @@ const ChatAssistant = (() => {
             chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const decoded = await chatAudioCtx.decodeAudioData(arrayBuffer);
 
+            // GainNode for volume boost (1.0 = normal, 2.0 = double, 3.0 = triple)
+            const gainNode = chatAudioCtx.createGain();
+            gainNode.gain.value = 2.5;
+            gainNode.connect(chatAudioCtx.destination);
+
             chatAudioSrc        = chatAudioCtx.createBufferSource();
             chatAudioSrc.buffer = decoded;
-            chatAudioSrc.connect(chatAudioCtx.destination);
+            chatAudioSrc.connect(gainNode);
             chatAudioSrc.onended = () => {
                 finishSpeaking();
                 if (onFinish) onFinish();
