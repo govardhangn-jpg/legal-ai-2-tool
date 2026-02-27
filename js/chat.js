@@ -241,7 +241,7 @@ const ChatAssistant = (() => {
         try {
             const baseUrl = 'https://legal-ai-2-tool.onrender.com';
 
-            const response = await fetch(`${baseUrl}/api/chat-assistant`, {
+            const response = await fetch(`${baseUrl}/chat-assistant`, {
                 method: 'POST',
                 headers: {
                     'Content-Type':  'application/json',
