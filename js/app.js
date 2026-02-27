@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             try {
-                const response = await fetch('https://legal-ai-2-tool.onrender.com/api/login', {
+                const response = await fetch('https://legal-ai-2-tool-1.onrender.com/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
