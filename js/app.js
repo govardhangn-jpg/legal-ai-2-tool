@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     loginSection.style.display = 'none';
                     mainApp.style.display      = 'block';
                     if (logoutBtn) logoutBtn.style.display = 'block';
+                    if (window.ChatAssistant) window.ChatAssistant.showTrigger();
                     errorEl.innerText = '';
                 } else {
                     errorEl.innerText = data.message || 'Login failed';

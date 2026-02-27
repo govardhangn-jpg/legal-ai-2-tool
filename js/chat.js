@@ -239,7 +239,7 @@ const ChatAssistant = (() => {
         showTyping();
 
         try {
-            const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
+            const baseUrl = 'https://legal-ai-2-tool.onrender.com';
 
             const response = await fetch(`${baseUrl}/api/chat-assistant`, {
                 method: 'POST',
@@ -256,8 +256,11 @@ const ChatAssistant = (() => {
             });
 
             if (response.status === 401 || response.status === 403) {
-                localStorage.removeItem('token');
-                window.location.reload();
+                // Token expired — try to refresh silently, don't reload page
+                hideTyping();
+                addMessage('ai', 'Your session has expired. Please log out and log in again to continue.');
+                isThinking = false;
+                sendBtn.disabled = false;
                 return;
             }
 
@@ -458,10 +461,18 @@ const ChatAssistant = (() => {
 
     function showTrigger() {
         if (triggerBtn) triggerBtn.classList.add('visible');
+        // Re-initialize if coming back from re-login
+        if (messagesEl && conversationHistory.length === 0) {
+            renderEmptyState();
+        }
     }
 
     function hideTrigger() {
         if (triggerBtn) triggerBtn.classList.remove('visible');
+        // Reset state on logout
+        conversationHistory = [];
+        documentContext = null;
+        if (contextBanner) contextBanner.classList.remove('visible');
         close();
     }
 
