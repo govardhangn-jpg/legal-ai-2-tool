@@ -1,6 +1,8 @@
 // app.js - Application Entry Point
 // SAMARTHAA-LEGAL
 
+const BACKEND = 'https://legal-ai-2-tool-1.onrender.com';
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 SAMARTHAA-LEGAL - Initializing...');
 
@@ -9,78 +11,74 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Check backend health
-    console.log('🔍 Checking backend server...');
-    let backendHealthy = false;
-    try {
-        backendHealthy = await checkBackendHealth();
-    } catch (err) {
-        console.error('Backend health check failed:', err);
-    }
-
-    if (!backendHealthy) {
-        console.warn('⚠️ Backend server is not responding!');
-        showBackendWarning();
-    } else {
-        console.log('✅ Backend server is running');
-    }
-
-    // Initialize UI
     UI.init();
-
     console.log('✅ SAMARTHAA-LEGAL initialized');
 
     // ── LOGOUT ──────────────────────────────────────────────────────
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
-            // Stop voice if active
             if (window.Voice) {
                 window.Voice.stopSpeaking();
                 window.Voice.stopRecording();
             }
             localStorage.removeItem('token');
-            document.getElementById('mainApp').style.display    = 'none';
+            document.getElementById('mainApp').style.display     = 'none';
             document.getElementById('loginSection').style.display = 'block';
             logoutBtn.style.display = 'none';
             if (window.ChatAssistant) window.ChatAssistant.hideTrigger();
         });
     }
 
-    // ── LOGIN ────────────────────────────────────────────────────────
-    const loginBtn     = document.getElementById('loginBtn');
+    // ── AUTO LOGIN ───────────────────────────────────────────────────
     const loginSection = document.getElementById('loginSection');
     const mainApp      = document.getElementById('mainApp');
+    const savedToken   = localStorage.getItem('token');
 
-    if (loginBtn) {
-        // Auto-login if valid token exists
-        const token = localStorage.getItem('token');
-        if (token) {
-            loginSection.style.display = 'none';
-            mainApp.style.display      = 'block';
-            if (logoutBtn) logoutBtn.style.display = 'block';
-            if (window.ChatAssistant) window.ChatAssistant.showTrigger();
-        } else {
-            if (logoutBtn) logoutBtn.style.display = 'none';
+    if (savedToken) {
+        loginSection.style.display = 'none';
+        mainApp.style.display      = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'block';
+        if (window.ChatAssistant) window.ChatAssistant.showTrigger();
+    } else {
+        if (logoutBtn) logoutBtn.style.display = 'none';
+    }
+
+    // ── LOGIN HANDLER ─────────────────────────────────────────────────
+    const loginBtn = document.getElementById('loginBtn');
+
+    async function attemptLogin() {
+        const email    = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+
+        if (!email || !password) {
+            showLoginError('Please enter email and password.');
+            return;
         }
 
-        loginBtn.addEventListener('click', async () => {
-            const email    = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const errorEl  = document.getElementById('loginError');
+        const MAX_RETRIES = 3;
+        let lastError = '';
 
-            if (!email || !password) {
-                errorEl.innerText = 'Please enter email and password.';
-                return;
-            }
-
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                const response = await fetch('https://legal-ai-2-tool-1.onrender.com/api/login', {
-                    method: 'POST',
+                if (attempt === 1) {
+                    setLoginLoading(true, 'Logging in…');
+                } else {
+                    setLoginLoading(true, `Server waking up… (${attempt}/${MAX_RETRIES})`);
+                    await sleep(3000);
+                }
+
+                const controller = new AbortController();
+                const timeout    = setTimeout(() => controller.abort(), 20000);
+
+                const response = await fetch(`${BACKEND}/api/login`, {
+                    method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
+                    body:    JSON.stringify({ email, password }),
+                    signal:  controller.signal
                 });
 
+                clearTimeout(timeout);
                 const data = await response.json();
 
                 if (response.ok) {
@@ -89,56 +87,66 @@ document.addEventListener('DOMContentLoaded', async () => {
                     mainApp.style.display      = 'block';
                     if (logoutBtn) logoutBtn.style.display = 'block';
                     if (window.ChatAssistant) window.ChatAssistant.showTrigger();
-                    errorEl.innerText = '';
+                    clearLoginError();
+                    setLoginLoading(false);
+                    return;
                 } else {
-                    errorEl.innerText = data.message || 'Login failed';
+                    lastError = data.message || 'Invalid email or password.';
+                    break; // Wrong credentials — no retry
                 }
-            } catch (error) {
-                errorEl.innerText = 'Login failed. Please check your connection.';
-            }
-        });
 
-        // Allow Enter key on password field
-        document.getElementById('loginPassword').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') loginBtn.click();
-        });
+            } catch (err) {
+                lastError = err.name === 'AbortError'
+                    ? 'Server is slow to respond — still trying…'
+                    : 'Network error. Check your connection.';
+                console.warn(`Login attempt ${attempt} failed:`, err.message);
+            }
+        }
+
+        setLoginLoading(false);
+        showLoginError(`${lastError} Please wait 30 seconds and try again.`);
     }
+
+    if (loginBtn) {
+        loginBtn.addEventListener('click', attemptLogin);
+        document.getElementById('loginEmail').addEventListener('keydown',    e => { if (e.key === 'Enter') attemptLogin(); });
+        document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
+    }
+
+    // Silent backend wake-up on page load
+    wakeUpBackend();
 });
 
-// ── Backend warning ────────────────────────────────────────────────────
-function showBackendWarning() {
-    const warningDiv = document.createElement('div');
-    warningDiv.className   = 'error-message';
-    warningDiv.style.display  = 'block';
-    warningDiv.style.margin   = '20px auto';
-    warningDiv.style.maxWidth = '800px';
-    warningDiv.innerHTML = `
-        <strong>⚠️ Backend Server Not Running</strong><br><br>
-        The backend server is not responding. Please ensure:<br>
-        1. Started the backend server: <code>npm start</code><br>
-        2. Backend is running on <code>http://localhost:5000</code>
-    `;
-    const container = document.querySelector('.container');
-    if (container) container.insertBefore(warningDiv, container.firstChild);
+// ── Wake backend silently on page load ────────────────────────────────
+async function wakeUpBackend() {
+    try {
+        const res = await fetch(`${BACKEND}/api/health`);
+        if (res.ok) console.log('✅ Backend server is running');
+    } catch {
+        console.warn('⚠️ Backend waking up...');
+        setTimeout(wakeUpBackend, 6000);
+    }
 }
 
-// ── Global error handler ───────────────────────────────────────────────
-window.addEventListener('error', (event) => {
-    console.error('Global error:', event.error);
-});
+// ── Helpers ───────────────────────────────────────────────────────────
+function setLoginLoading(loading, msg = 'Login') {
+    const btn = document.getElementById('loginBtn');
+    if (!btn) return;
+    btn.disabled      = loading;
+    btn.textContent   = msg;
+    btn.style.opacity = loading ? '0.75' : '1';
+}
 
-// ── Browser compatibility check ────────────────────────────────────────
-(function checkBrowserCompatibility() {
-    const features = {
-        fetch:        typeof fetch !== 'undefined',
-        promises:     typeof Promise !== 'undefined',
-        classList:    'classList' in document.createElement('div'),
-        localStorage: typeof localStorage !== 'undefined'
-    };
-    const unsupported = Object.entries(features)
-        .filter(([, ok]) => !ok)
-        .map(([f]) => f);
-    if (unsupported.length > 0) {
-        console.warn('Unsupported browser features:', unsupported);
-    }
-})();
+function showLoginError(msg) {
+    const el = document.getElementById('loginError');
+    if (el) el.innerText = msg;
+}
+
+function clearLoginError() {
+    const el = document.getElementById('loginError');
+    if (el) el.innerText = '';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+window.addEventListener('error', e => console.error('Global error:', e.error));
