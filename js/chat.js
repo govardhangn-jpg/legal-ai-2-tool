@@ -239,8 +239,7 @@ const ChatAssistant = (() => {
         showTyping();
 
         try {
-            const baseUrl = (window.CONFIG?.API?.BACKEND_URL || 'https://legal-ai-2-tool.onrender.com/api/chat')
-                .replace('/api/chat', '');
+            const baseUrl = 'https://legal-ai-2-tool.onrender.com';
 
             const response = await fetch(`${baseUrl}/api/chat-assistant`, {
                 method: 'POST',
@@ -298,8 +297,7 @@ const ChatAssistant = (() => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const baseUrl = (window.CONFIG?.API?.BACKEND_URL || 'https://legal-ai-2-tool.onrender.com/api/chat')
-            .replace('/api/chat', '');
+        const baseUrl = 'https://legal-ai-2-tool.onrender.com';
 
         stopSpeaking(); // stop any current audio
 
