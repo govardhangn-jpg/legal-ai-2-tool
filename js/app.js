@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         loginSection.style.display = 'none';
         mainApp.style.display      = 'block';
         if (logoutBtn) logoutBtn.style.display = 'block';
-        if (window.ChatAssistant) window.ChatAssistant.showTrigger();
+        // Wait for chat.js to finish initializing
+        setTimeout(() => { if (window.ChatAssistant) window.ChatAssistant.showTrigger(); }, 300);
     } else {
         if (logoutBtn) logoutBtn.style.display = 'none';
     }
