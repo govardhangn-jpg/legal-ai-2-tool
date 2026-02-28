@@ -440,52 +440,10 @@ app.post('/api/download/word', requireAuth, async (req, res) => {
 
 
 // =====================================================
-//   Transcribe Audio Endpoint  🔐 Protected
-//   POST /api/transcribe
-//   Body: FormData with audio file
+//   Transcribe Audio — placeholder (requires OPENAI_API_KEY)
 // =====================================================
-app.post('/api/transcribe', requireAuth, upload.single('audio'), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ error: 'No audio file provided' });
-
-        const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-        // If no OpenAI key, use Claude to tell user to type instead
-        if (!OPENAI_API_KEY) {
-            return res.status(200).json({ text: '', error: 'Transcription not configured' });
-        }
-
-        // Send to OpenAI Whisper
-        const formData = new FormData();
-        formData.append('file', req.file.buffer, {
-            filename:    'audio.webm',
-            contentType: req.file.mimetype || 'audio/webm'
-        });
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'en');
-
-        const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method:  'POST',
-            headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                ...formData.getHeaders()
-            },
-            body: formData
-        });
-
-        if (!whisperRes.ok) {
-            const err = await whisperRes.json().catch(() => ({}));
-            throw new Error(err.error?.message || `Whisper error ${whisperRes.status}`);
-        }
-
-        const data = await whisperRes.json();
-        console.log(`🎤 Transcribed: "${data.text?.substring(0, 60)}..."`);
-        res.json({ text: data.text || '' });
-
-    } catch (error) {
-        console.error('❌ Transcription error:', error);
-        res.status(500).json({ error: error.message, text: '' });
-    }
+app.post('/api/transcribe', requireAuth, upload.single('audio'), (req, res) => {
+    res.status(200).json({ text: '', error: 'Transcription not configured' });
 });
 
 // =====================================================

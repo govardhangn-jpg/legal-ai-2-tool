@@ -394,20 +394,23 @@ const ChatAssistant = (() => {
     function startRecording() {
         if (isRecording) { stopRecording(); return; }
 
+        // Check if Speech Recognition is available
+        if (!hasSpeechRecognition) {
+            showMicStatus('Voice not supported. Please type your question.');
+            return;
+        }
+
+        // Request mic permission first (required on Android)
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
-                // Use MediaRecorder on Android (more reliable)
-                // Use Web Speech API on desktop (better transcription)
-                if (isAndroid || !hasSpeechRecognition) {
-                    startMediaRecorder(stream);
-                } else {
-                    stream.getTracks().forEach(t => t.stop()); // release stream
-                    startWebSpeech();
-                }
+                // Release the stream — Web Speech API manages its own mic
+                stream.getTracks().forEach(t => t.stop());
+                startWebSpeech();
             })
             .catch(err => {
-                console.error('Mic error:', err);
-                alert('Microphone access denied. Please allow mic in browser settings.');
+                console.error('Mic permission error:', err);
+                showMicStatus('Mic blocked. Go to Chrome Settings → Site Settings → Microphone → Allow this site.');
+                setTimeout(() => showMicStatus(''), 5000);
             });
     }
 
@@ -563,6 +566,10 @@ const ChatAssistant = (() => {
             micBtn.title = 'Speak your question';
             chatInput.placeholder = 'Ask about Indian law or your document…';
         }
+    }
+
+    function showMicStatus(msg) {
+        chatInput.placeholder = msg || 'Ask about Indian law or your document…';
     }
 
     // ══════════════════════════════════════════════════════════════
