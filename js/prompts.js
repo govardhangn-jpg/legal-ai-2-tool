@@ -19,7 +19,7 @@ Requirements:
 6. Ensure compliance with Indian stamp duty and registration requirements where applicable
 7. Format properly with clear sections and subsections
 8. Include appropriate schedules/annexures if needed
-
+ 
 Generate a complete, professional contract draft that is ready for lawyer review and customization.`;
     },
 */
