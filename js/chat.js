@@ -19,7 +19,10 @@ const ChatAssistant = (() => {
 
     // Voice state
     let recognition     = null;
+    let mediaRecorder   = null;
+    let audioChunks     = [];
     let isRecording     = false;
+    let useMediaRecorder = false; // will be set based on browser capability
     let chatAudioCtx    = null;
     let chatAudioSrc    = null;
     let isSpeaking      = false;
@@ -31,6 +34,9 @@ const ChatAssistant = (() => {
 
     const hasSpeechRecognition =
         ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+    // Detect Android — Web Speech API unreliable on Android Chrome
+    const isAndroid = /android/i.test(navigator.userAgent);
 
     // ── Suggested questions per mode ──────────────────────────────
     const SUGGESTIONS = {
@@ -386,62 +392,149 @@ const ChatAssistant = (() => {
     // ══════════════════════════════════════════════════════════════
 
     function startRecording() {
-        if (!hasSpeechRecognition) {
-            alert('Voice input requires Chrome or Edge.');
-            return;
-        }
         if (isRecording) { stopRecording(); return; }
 
         navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(() => {
-                const SR  = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SR();
-                recognition.lang           = 'en-IN';
-                recognition.continuous     = false;
-                recognition.interimResults = true;
-
-                let finalText = '';
-
-                recognition.onstart = () => {
-                    isRecording = true;
-                    micBtn.classList.add('recording');
-                    micBtn.title = 'Stop recording';
-                    micBtn.innerHTML = '⏹';
-                    chatInput.placeholder = 'Listening…';
-                };
-
-                recognition.onresult = (event) => {
-                    let interim = '';
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        const t = event.results[i][0].transcript;
-                        if (event.results[i].isFinal) {
-                            finalText += (finalText ? ' ' : '') + t.trim();
-                        } else {
-                            interim += t;
-                        }
-                    }
-                    chatInput.value = finalText + (interim ? ' ' + interim : '');
-                    autoResizeInput();
-                };
-
-                recognition.onerror = (e) => {
-                    console.warn('Speech recognition error:', e.error);
-                    stopRecording();
-                };
-
-                recognition.onend = () => {
-                    chatInput.placeholder = 'Ask about Indian law or your document…';
-                    stopRecording();
-                    // Small delay to ensure finalText is fully committed
-                    setTimeout(() => {
-                        const val = chatInput.value.trim();
-                        if (val) sendMessage();
-                    }, 200);
-                };
-
-                recognition.start();
+            .then(stream => {
+                // Use MediaRecorder on Android (more reliable)
+                // Use Web Speech API on desktop (better transcription)
+                if (isAndroid || !hasSpeechRecognition) {
+                    startMediaRecorder(stream);
+                } else {
+                    stream.getTracks().forEach(t => t.stop()); // release stream
+                    startWebSpeech();
+                }
             })
-            .catch(() => alert('Microphone access denied.'));
+            .catch(err => {
+                console.error('Mic error:', err);
+                alert('Microphone access denied. Please allow mic in browser settings.');
+            });
+    }
+
+    // ── Web Speech API (desktop Chrome) ───────────────────────────
+    function startWebSpeech() {
+        const SR  = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SR();
+        recognition.lang           = 'en-IN';
+        recognition.continuous     = false;
+        recognition.interimResults = true;
+
+        let finalText = '';
+
+        recognition.onstart = () => {
+            isRecording = true;
+            setMicRecording(true, 'Listening…');
+        };
+
+        recognition.onresult = (event) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const t = event.results[i][0].transcript;
+                if (event.results[i].isFinal) finalText += (finalText ? ' ' : '') + t.trim();
+                else interim += t;
+            }
+            chatInput.value = finalText + (interim ? ' ' + interim : '');
+            autoResizeInput();
+        };
+
+        recognition.onerror = (e) => {
+            console.warn('Web Speech error:', e.error);
+            stopRecording();
+        };
+
+        recognition.onend = () => {
+            setMicRecording(false);
+            isRecording = false;
+            recognition = null;
+            setTimeout(() => {
+                if (chatInput.value.trim()) sendMessage();
+            }, 200);
+        };
+
+        try { recognition.start(); }
+        catch(e) { console.error('Could not start recognition:', e); }
+    }
+
+    // ── MediaRecorder API (Android + fallback) ─────────────────────
+    function startMediaRecorder(stream) {
+        audioChunks  = [];
+        useMediaRecorder = true;
+
+        // Pick best supported format
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : MediaRecorder.isTypeSupported('audio/webm')
+            ? 'audio/webm'
+            : 'audio/mp4';
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+        mediaRecorder.ondataavailable = e => {
+            if (e.data && e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstart = () => {
+            isRecording = true;
+            setMicRecording(true, 'Recording…');
+        };
+
+        mediaRecorder.onstop = async () => {
+            setMicRecording(false, 'Transcribing…');
+            stream.getTracks().forEach(t => t.stop());
+
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
+            await transcribeAudio(audioBlob);
+
+            useMediaRecorder = false;
+            isRecording = false;
+        };
+
+        mediaRecorder.onerror = () => {
+            stopRecording();
+            stream.getTracks().forEach(t => t.stop());
+        };
+
+        mediaRecorder.start();
+    }
+
+    // ── Send audio to backend for Whisper transcription ────────────
+    async function transcribeAudio(audioBlob) {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'voice.webm');
+
+            const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
+            const response = await fetch(`${baseUrl}/api/transcribe`, {
+                method:  'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body:    formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.text && data.text.trim()) {
+                    chatInput.value = data.text.trim();
+                    autoResizeInput();
+                    setMicRecording(false);
+                    setTimeout(() => sendMessage(), 100);
+                } else {
+                    setMicRecording(false);
+                    chatInput.placeholder = 'Could not hear clearly. Try again.';
+                    setTimeout(() => chatInput.placeholder = 'Ask about Indian law or your document…', 3000);
+                }
+            } else {
+                // Transcription failed — fallback: show input for manual typing
+                setMicRecording(false);
+                chatInput.placeholder = 'Voice failed — please type your question';
+                setTimeout(() => chatInput.placeholder = 'Ask about Indian law or your document…', 4000);
+            }
+        } catch (err) {
+            console.error('Transcription error:', err);
+            setMicRecording(false);
+        }
     }
 
     function stopRecording() {
@@ -450,10 +543,25 @@ const ChatAssistant = (() => {
             try { recognition.stop(); } catch {}
             recognition = null;
         }
-        if (micBtn) {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            try { mediaRecorder.stop(); } catch {}
+        }
+        mediaRecorder = null;
+        setMicRecording(false);
+    }
+
+    function setMicRecording(active, label) {
+        if (!micBtn) return;
+        if (active) {
+            micBtn.classList.add('recording');
+            micBtn.innerHTML = '⏹';
+            micBtn.title = 'Tap to stop';
+            if (label) chatInput.placeholder = label;
+        } else {
             micBtn.classList.remove('recording');
             micBtn.innerHTML = '🎤';
             micBtn.title = 'Speak your question';
+            chatInput.placeholder = 'Ask about Indian law or your document…';
         }
     }
 
