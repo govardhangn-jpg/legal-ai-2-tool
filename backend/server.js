@@ -54,24 +54,27 @@ const users = [
     {
         id: 1,
         email: 'govardhangn@samarthaa.legal',
-        password: bcrypt.hashSync('ownerdemo@!2345', 8),
-
+        password: bcrypt.hashSync('ownerdemo@!2345', 8)
+    },
+    {
         id: 2,
         email: 'rekhajayaram20@samarthaa.legal',
-        password: bcrypt.hashSync('ownerdemo@!2345', 8),
-
+        password: bcrypt.hashSync('ownerdemo@!2345', 8)
+    },
+    {
         id: 3,
         email: 'bopanna@samarthaa.legal',
-        password: bcrypt.hashSync('bopannademo@!2345', 8),
-
+        password: bcrypt.hashSync('bopannademo@!2345', 8)
+    },
+    {
         id: 4,
         email: 'demo1@samarthaa.legal',
-        password: bcrypt.hashSync('demodemo@!2345', 8),
-
+        password: bcrypt.hashSync('demodemo@!2345', 8)
+    },
+    {
         id: 5,
         email: 'demo2@samarthaa.legal',
         password: bcrypt.hashSync('demodemo@!2345', 8)
-
     }
 ];
 
@@ -140,7 +143,7 @@ app.post('/api/login', (req, res) => {
     if (!bcrypt.compareSync(password, user.password))
         return res.status(401).json({ message: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '2h' });
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ token });
 });
 
