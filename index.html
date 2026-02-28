@@ -30,10 +30,10 @@
         <div style="margin-bottom:16px;">
             <label id="countryLabel" for="countrySelect" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:8px;opacity:0.75;">Country / Jurisdiction</label>
             <div style="display:flex;gap:8px;">
-                <button class="locale-btn active" id="localeIN" onclick="setAppLocale('en-IN')" title="India — English">
+                <button class="locale-btn active" id="localeIN" onclick="if(window.setAppLocale) setAppLocale('en-IN')" title="India — English">
                     🇮🇳 India
                 </button>
-                <button class="locale-btn" id="localeJP" onclick="setAppLocale('ja-JP')" title="Japan — Japanese">
+                <button class="locale-btn" id="localeJP" onclick="if(window.setAppLocale) setAppLocale('ja-JP')" title="Japan — Japanese">
                     🇯🇵 日本
                 </button>
             </div>
@@ -52,7 +52,7 @@
             <p class="tagline" id="appSubtitle">Contract Drafting &bull; Case Research &bull; Legal Opinions</p>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-            <button id="langToggleBtn" onclick="toggleLocale()" title="Switch language" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:0.85rem;font-weight:600;letter-spacing:0.02em;">🇮🇳 EN</button>
+            <button id="langToggleBtn" onclick="if(window.toggleLocale) toggleLocale()" title="Switch language" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:0.85rem;font-weight:600;letter-spacing:0.02em;">🇮🇳 EN</button>
             <button id="logoutBtn">Logout</button>
         </div>
     </header>
@@ -231,67 +231,7 @@
     </footer>
 
     <script src="./js/config.js"></script>
-    <script src="./js/prompts.js"></script>
-    <script src="./js/api.js"></script>
-    <script src="./js/ui.js"></script>
-    <script src="./js/voice.js"></script>
-    <script src="./js/app.js"></script>
-
-    <!-- ══ CHAT ASSISTANT ═══════════════════════════════════════════ -->
-
-    <!-- Floating trigger button -->
-    <button id="chatTriggerBtn" title="Ask SAMARTHAA">&#x2696;&#xFE0F;</button>
-
-    <!-- Chat panel -->
-    <div id="chatPanel">
-
-        <!-- Header -->
-        <div class="chat-header">
-            <div class="chat-header-avatar">&#x2696;</div>
-            <div class="chat-header-info">
-                <h4>SAMARTHAA Assistant</h4>
-                <p id="chatSubtitle">Indian Legal AI &bull; Voice &amp; Text</p>
-            </div>
-            <div class="chat-header-actions">
-    <button class="chat-icon-btn" id="chatDownloadBtn" title="Download chat as PDF">📥</button>
-    <button class="chat-icon-btn" id="chatClearBtn" title="Clear conversation">🗑</button>
-    <button class="chat-icon-btn" id="chatCloseBtn" title="Close">✕</button>
-</div>
-        </div>
-
-        <!-- Context banner -->
-        <div class="chat-context-banner" id="chatContextBanner">
-            <div class="chat-context-dot"></div>
-            <span class="chat-context-text" id="chatContextText">Document loaded</span>
-            <button class="chat-context-clear" id="chatContextClear">&#x2715; Clear</button>
-        </div>
-
-        <!-- Messages -->
-        <div class="chat-messages" id="chatMessages"></div>
-
-        <!-- Typing indicator -->
-        <div class="chat-typing" id="chatTyping">
-            <div class="chat-msg-avatar" style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#a8872e);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;">&#x2696;</div>
-            <div class="chat-typing-dots">
-                <span></span><span></span><span></span>
-            </div>
-        </div>
-
-        <!-- Input area -->
-        <div class="chat-input-area">
-            <div class="chat-input-row">
-                <textarea id="chatInput" placeholder="Ask about Indian law or your document…" rows="1"></textarea>
-                <button class="chat-action-btn" id="chatMicBtn" title="Speak your question">&#x1F3A4;</button>
-                <button class="chat-action-btn" id="chatSendBtn" title="Send">&#x27A4;</button>
-            </div>
-            <div class="chat-input-hint">Press Enter to send &bull; Shift+Enter for new line &bull; &#x1F3A4; to speak</div>
-        </div>
-
-    </div>
-
-    <script src="./js/chat.js"></script>
-
-
+    <!-- ── LOCALE STYLES & FUNCTIONS (must be after config.js) ─── -->
     <!-- ── LOCALE STYLES ─────────────────────────────────────────── -->
     <style>
         .locale-btn {
@@ -436,6 +376,67 @@
         setAppLocale(saved);
     });
     </script>
+
+    <script src="./js/prompts.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/voice.js"></script>
+    <script src="./js/app.js"></script>
+
+    <!-- ══ CHAT ASSISTANT ═══════════════════════════════════════════ -->
+
+    <!-- Floating trigger button -->
+    <button id="chatTriggerBtn" title="Ask SAMARTHAA">&#x2696;&#xFE0F;</button>
+
+    <!-- Chat panel -->
+    <div id="chatPanel">
+
+        <!-- Header -->
+        <div class="chat-header">
+            <div class="chat-header-avatar">&#x2696;</div>
+            <div class="chat-header-info">
+                <h4>SAMARTHAA Assistant</h4>
+                <p id="chatSubtitle">Indian Legal AI &bull; Voice &amp; Text</p>
+            </div>
+            <div class="chat-header-actions">
+    <button class="chat-icon-btn" id="chatDownloadBtn" title="Download chat as PDF">📥</button>
+    <button class="chat-icon-btn" id="chatClearBtn" title="Clear conversation">🗑</button>
+    <button class="chat-icon-btn" id="chatCloseBtn" title="Close">✕</button>
+</div>
+        </div>
+
+        <!-- Context banner -->
+        <div class="chat-context-banner" id="chatContextBanner">
+            <div class="chat-context-dot"></div>
+            <span class="chat-context-text" id="chatContextText">Document loaded</span>
+            <button class="chat-context-clear" id="chatContextClear">&#x2715; Clear</button>
+        </div>
+
+        <!-- Messages -->
+        <div class="chat-messages" id="chatMessages"></div>
+
+        <!-- Typing indicator -->
+        <div class="chat-typing" id="chatTyping">
+            <div class="chat-msg-avatar" style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#a8872e);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;">&#x2696;</div>
+            <div class="chat-typing-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+
+        <!-- Input area -->
+        <div class="chat-input-area">
+            <div class="chat-input-row">
+                <textarea id="chatInput" placeholder="Ask about Indian law or your document…" rows="1"></textarea>
+                <button class="chat-action-btn" id="chatMicBtn" title="Speak your question">&#x1F3A4;</button>
+                <button class="chat-action-btn" id="chatSendBtn" title="Send">&#x27A4;</button>
+            </div>
+            <div class="chat-input-hint">Press Enter to send &bull; Shift+Enter for new line &bull; &#x1F3A4; to speak</div>
+        </div>
+
+    </div>
+
+    <script src="./js/chat.js"></script>
+
 
 </body>
 </html>
