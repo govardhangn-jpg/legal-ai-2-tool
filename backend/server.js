@@ -53,8 +53,25 @@ const app = express();
 const users = [
     {
         id: 1,
-        email: 'admin@just-law.tech',
-        password: bcrypt.hashSync('pwd@123', 8)
+        email: 'govardhangn@samarthaa.legal',
+        password: bcrypt.hashSync('ownerdemo@!2345', 8),
+
+        id: 2,
+        email: 'rekhajayaram20@samarthaa.legal',
+        password: bcrypt.hashSync('ownerdemo@!2345', 8),
+
+        id: 3,
+        email: 'bopanna@samarthaa.legal',
+        password: bcrypt.hashSync('bopannademo@!2345', 8),
+
+        id: 4,
+        email: 'demo1@samarthaa.legal',
+        password: bcrypt.hashSync('demodemo@!2345', 8),
+
+        id: 5,
+        email: 'demo2@samarthaa.legal',
+        password: bcrypt.hashSync('demodemo@!2345', 8)
+
     }
 ];
 
