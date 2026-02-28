@@ -257,7 +257,8 @@ const ChatAssistant = (() => {
                     message:     text,
                     history:     conversationHistory.slice(-10), // last 10 turns for context
                     documentContext: documentContext || null,
-                    currentMode: currentMode
+                    currentMode: currentMode,
+                    locale:      window.CONFIG?.getLocale() || 'en-IN'
                 })
             });
 

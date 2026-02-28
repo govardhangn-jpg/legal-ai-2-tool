@@ -94,7 +94,7 @@ const UI = {
         if (!this.selectedMode)
             throw new Error(CONFIG.MESSAGES.MODE_NOT_SELECTED);
 
-        const inputs = { mode: this.selectedMode };
+        const inputs = { mode: this.selectedMode, locale: CONFIG.getLocale() };
 
         if (this.selectedMode === 'contract') {
             inputs.contractType    = this.elements.contractType.value;

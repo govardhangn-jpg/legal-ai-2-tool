@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -24,7 +24,21 @@
  
     <!-- LOGIN -->
     <div id="loginSection" class="login-section">
-        <h2>&#x1F510; Login Required</h2>
+        <h2 id="loginTitle">&#x1F510; Login Required</h2>
+
+        <!-- Country / locale selector -->
+        <div style="margin-bottom:16px;">
+            <label id="countryLabel" for="countrySelect" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:8px;opacity:0.75;">Country / Jurisdiction</label>
+            <div style="display:flex;gap:8px;">
+                <button class="locale-btn active" id="localeIN" onclick="setAppLocale('en-IN')" title="India — English">
+                    🇮🇳 India
+                </button>
+                <button class="locale-btn" id="localeJP" onclick="setAppLocale('ja-JP')" title="Japan — Japanese">
+                    🇯🇵 日本
+                </button>
+            </div>
+        </div>
+
         <input type="email"    id="loginEmail"    placeholder="Email" autocomplete="email">
         <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
         <button id="loginBtn">Login</button>
@@ -35,16 +49,19 @@
     <header>
         <div class="header-content">
             <h1>&#x2696;&#xFE0F; SAMARTHAA-LEGAL</h1>
-            <p class="tagline">Contract Drafting &bull; Case Research &bull; Legal Opinions</p>
+            <p class="tagline" id="appSubtitle">Contract Drafting &bull; Case Research &bull; Legal Opinions</p>
         </div>
-        <button id="logoutBtn">Logout</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <button id="langToggleBtn" onclick="toggleLocale()" title="Switch language" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:0.85rem;font-weight:600;letter-spacing:0.02em;">🇮🇳 EN</button>
+            <button id="logoutBtn">Logout</button>
+        </div>
     </header>
 
     <!-- MAIN APP -->
     <div class="container" id="mainApp" style="display:none;">
 
         <div class="info-box">
-            <h3>&#x1F4CB; How to Use</h3>
+            <h3 id="howToTitle">&#x1F4CB; How to Use</h3>
             <ul>
                 <li><strong>Contract Drafting:</strong> Select contract type and fill in key terms &mdash; tap &#x1F3A4; to speak any field.</li>
                 <li><strong>Case Research:</strong> Enter legal issue and context &mdash; voice input on every field.</li>
@@ -52,20 +69,20 @@
             </ul>
         </div>
 
-        <h2 class="section-title">Select Legal Service</h2>
+        <h2 class="section-title" id="selectService">Select Legal Service</h2>
 
         <div class="mode-selector">
             <div class="mode-card" data-mode="contract">
-                <h3>&#x1F4DD; Contract Drafting</h3>
-                <p>Generate sale deeds, lease agreements, NDAs, employment contracts and more. Voice input enabled.</p>
+                <h3 id="modeContractTitle">&#x1F4DD; Contract Drafting</h3>
+                <p id="modeContractDesc">Generate sale deeds, lease agreements, NDAs, employment contracts and more. Voice input enabled.</p>
             </div>
             <div class="mode-card" data-mode="research">
-                <h3>&#x1F50D; Case Research</h3>
-                <p>Research Indian case law and precedents. Speak your query hands-free and get results read aloud.</p>
+                <h3 id="modeResearchTitle">&#x1F50D; Case Research</h3>
+                <p id="modeResearchDesc">Research Indian case law and precedents. Speak your query hands-free and get results read aloud.</p>
             </div>
             <div class="mode-card" data-mode="opinion">
-                <h3>&#x2696;&#xFE0F; Legal Opinion</h3>
-                <p>Detailed legal opinions with full voice interaction &mdash; speak your facts, listen to the analysis.</p>
+                <h3 id="modeOpinionTitle">&#x2696;&#xFE0F; Legal Opinion</h3>
+                <p id="modeOpinionDesc">Detailed legal opinions with full voice interaction &mdash; speak your facts, listen to the analysis.</p>
             </div>
         </div>
 
@@ -76,7 +93,7 @@
             <!-- CONTRACT FIELDS -->
             <div id="contractFields" class="mode-fields" style="display:none;">
                 <div class="input-group">
-                    <label for="contractType">Contract Type</label>
+                    <label for="contractType" id="contractTypeLabel">Contract Type</label>
                     <select id="contractType">
                         <option value="">Select Contract Type</option>
                         <option value="Sale Deed">Sale Deed</option>
@@ -94,7 +111,7 @@
                 </div>
                 <div class="input-group voice-panel visible" id="voicePanel_contract">
                     <div class="field-label-row">
-                        <label for="contractDetails">Contract Details &amp; Key Terms</label>
+                        <label for="contractDetails" id="contractDetailsLabel">Contract Details &amp; Key Terms</label>
                         <button class="btn-mic-inline" id="micContractDetails">&#x1F3A4; Speak</button>
                     </div>
                     <input type="text" id="contractDetails"
@@ -107,7 +124,7 @@
             <div id="researchFields" class="mode-fields" style="display:none;">
                 <div class="input-group voice-panel visible" id="voicePanel_research">
                     <div class="field-label-row">
-                        <label for="legalIssue">Legal Issue / Topic</label>
+                        <label for="legalIssue" id="legalIssueLabel">Legal Issue / Topic</label>
                         <button class="btn-mic-inline" id="micLegalIssue">&#x1F3A4; Speak</button>
                     </div>
                     <input type="text" id="legalIssue"
@@ -116,7 +133,7 @@
 
                     <div style="margin-top:16px;">
                         <div class="field-label-row">
-                            <label for="researchQuery">Research Query &amp; Context</label>
+                            <label for="researchQuery" id="researchQueryLabel">Research Query &amp; Context</label>
                             <button class="btn-mic-inline" id="micResearchQuery">&#x1F3A4; Speak</button>
                         </div>
                         <textarea id="researchQuery"
@@ -126,7 +143,7 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="jurisdiction">Preferred Jurisdiction</label>
+                    <label for="jurisdiction" id="jurisdictionLabel">Preferred Jurisdiction</label>
                     <select id="jurisdiction">
                         <option value="All">All Indian Courts</option>
                         <option value="Supreme Court">Supreme Court of India</option>
@@ -144,7 +161,7 @@
             <div id="opinionFields" class="mode-fields" style="display:none;">
                 <div class="input-group voice-panel visible" id="voicePanel_opinion">
                     <div class="field-label-row">
-                        <label for="opinionTopic">Legal Matter / Question</label>
+                        <label for="opinionTopic" id="opinionTopicLabel">Legal Matter / Question</label>
                         <button class="btn-mic-inline" id="micOpinionTopic">&#x1F3A4; Speak</button>
                     </div>
                     <input type="text" id="opinionTopic"
@@ -153,7 +170,7 @@
 
                     <div style="margin-top:16px;">
                         <div class="field-label-row">
-                            <label for="opinionQuery">Detailed Query &amp; Facts</label>
+                            <label for="opinionQuery" id="opinionQueryLabel">Detailed Query &amp; Facts</label>
                             <button class="btn-mic-inline" id="micOpinionQuery">&#x1F3A4; Speak</button>
                         </div>
                         <textarea id="opinionQuery"
@@ -172,7 +189,7 @@
 
             <!-- Action Buttons -->
             <div class="action-buttons">
-                <button class="btn-primary"   id="generateBtn">Generate Legal Document</button>
+                <button class="btn-primary" id="generateBtn">Generate Legal Document</button>
                 <button class="btn-secondary" id="clearBtn">Clear Form</button>
             </div>
 
@@ -190,9 +207,9 @@
                 <h2 id="resultTitle">Generated Result</h2>
                 <button class="btn-readaloud" id="btnReadAloud">&#x1F50A; Read Aloud</button>
                 <span class="elevenlabs-badge" id="elBadge" style="display:none;">powered by ElevenLabs</span>
-                <button class="copy-btn"     id="copyBtn">&#x1F4CB; Copy</button>
+                <button class="copy-btn" id="copyBtn">&#x1F4CB; Copy</button>
                 <button class="download-btn" id="downloadWordBtn" disabled>&#x1F4E5; Word</button>
-                <button class="download-btn" id="downloadPdfBtn"  disabled>&#x1F4E5; PDF</button>
+                <button class="download-btn" id="downloadPdfBtn" disabled>&#x1F4E5; PDF</button>
             </div>
 
             <div id="speakingIndicator">
@@ -210,7 +227,7 @@
     </div>
 
     <footer>
-        <p><strong>Disclaimer:</strong> This AI tool provides general legal information and drafts. Always consult a qualified legal professional before acting on any AI-generated content. Not a substitute for professional legal advice.</p>
+        <p id="disclaimer"><strong>Disclaimer:</strong> This AI tool provides general legal information and drafts. Always consult a qualified legal professional before acting on any AI-generated content. Not a substitute for professional legal advice.</p>
     </footer>
 
     <script src="./js/config.js"></script>
@@ -233,7 +250,7 @@
             <div class="chat-header-avatar">&#x2696;</div>
             <div class="chat-header-info">
                 <h4>SAMARTHAA Assistant</h4>
-                <p>Indian Legal AI &bull; Voice &amp; Text</p>
+                <p id="chatSubtitle">Indian Legal AI &bull; Voice &amp; Text</p>
             </div>
             <div class="chat-header-actions">
     <button class="chat-icon-btn" id="chatDownloadBtn" title="Download chat as PDF">📥</button>
@@ -273,6 +290,152 @@
     </div>
 
     <script src="./js/chat.js"></script>
+
+
+    <!-- ── LOCALE STYLES ─────────────────────────────────────────── -->
+    <style>
+        .locale-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1.5px solid #d4c9a8;
+            border-radius: 8px;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #5a4e38;
+            transition: all 0.2s;
+        }
+        .locale-btn.active {
+            background: linear-gradient(135deg, #8b6914, #c9a84c);
+            border-color: #8b6914;
+            color: #fff;
+        }
+        .locale-btn:hover:not(.active) {
+            background: rgba(139,105,20,0.1);
+        }
+    </style>
+
+    <!-- ── LOCALE FUNCTIONS ──────────────────────────────────────── -->
+    <script>
+    function setAppLocale(locale) {
+        CONFIG.setLocale(locale);
+        CONFIG.applyLocale();
+        applyTranslations();
+        // Update login buttons
+        document.querySelectorAll('.locale-btn').forEach(b => b.classList.remove('active'));
+        const btnId = locale === 'ja-JP' ? 'localeJP' : 'localeIN';
+        const btn = document.getElementById(btnId);
+        if (btn) btn.classList.add('active');
+        // Update html lang
+        document.getElementById('htmlRoot').lang = locale === 'ja-JP' ? 'ja' : 'en';
+        // Update header toggle
+        const tog = document.getElementById('langToggleBtn');
+        if (tog) tog.textContent = locale === 'ja-JP' ? '🇯🇵 JA' : '🇮🇳 EN';
+    }
+
+    function toggleLocale() {
+        const current = CONFIG.getLocale();
+        setAppLocale(current === 'ja-JP' ? 'en-IN' : 'ja-JP');
+    }
+
+    function applyTranslations() {
+        const tr = CONFIG.t();
+        const isJA = CONFIG.isJapanese();
+
+        // Static text
+        const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.innerHTML = val; };
+        const setph = (id, val) => { const el = document.getElementById(id); if (el && val) el.placeholder = val; };
+
+        set('appSubtitle',         tr.appSubtitle);
+        set('howToTitle',          tr.howToTitle);
+        set('selectService',       tr.selectService);
+        set('modeContractTitle',   tr.modes.contract.title);
+        set('modeContractDesc',    tr.modes.contract.desc);
+        set('modeResearchTitle',   tr.modes.research.title);
+        set('modeResearchDesc',    tr.modes.research.desc);
+        set('modeOpinionTitle',    tr.modes.opinion.title);
+        set('modeOpinionDesc',     tr.modes.opinion.desc);
+        set('contractTypeLabel',   tr.contractTypeLabel);
+        set('contractDetailsLabel',tr.contractDetailsLabel);
+        set('legalIssueLabel',     tr.legalIssueLabel);
+        set('researchQueryLabel',  tr.researchQueryLabel);
+        set('jurisdictionLabel',   tr.jurisdictionLabel);
+        set('opinionTopicLabel',   tr.opinionTopicLabel);
+        set('opinionQueryLabel',   tr.opinionQueryLabel);
+        set('generateBtn',         tr.generateBtn);
+        set('clearBtn',            tr.clearBtn);
+        set('copyBtn',             tr.copyBtn);
+        set('downloadWordBtn',     tr.wordBtn);
+        set('downloadPdfBtn',      tr.pdfBtn);
+        set('resultTitle',         tr.resultTitle);
+        set('disclaimer',          tr.disclaimer);
+        set('loginTitle',          tr.loginTitle);
+        set('countryLabel',        tr.countryLabel);
+        set('chatSubtitle',        tr.chatSubtitle);
+
+        setph('loginEmail',        tr.loginEmailPh);
+        setph('loginPassword',     tr.loginPasswordPh);
+        setph('contractDetails',   tr.contractDetailsPlaceholder);
+        setph('legalIssue',        tr.legalIssuePlaceholder);
+        setph('researchQuery',     tr.researchQueryPlaceholder);
+        setph('opinionTopic',      tr.opinionTopicPlaceholder);
+        setph('opinionQuery',      tr.opinionQueryPlaceholder);
+        setph('chatInput',         tr.chatPlaceholder);
+
+        // Mic buttons
+        document.querySelectorAll('.btn-mic-inline').forEach(b => {
+            if (!b.classList.contains('recording')) b.textContent = tr.speakBtn;
+        });
+
+        // Contract type options
+        const ctSelect = document.getElementById('contractType');
+        if (ctSelect) {
+            const selected = ctSelect.value;
+            ctSelect.innerHTML = `<option value="">${tr.contractTypePlaceholder}</option>` +
+                tr.contractTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+            ctSelect.value = selected;
+        }
+
+        // Jurisdiction options
+        const jurSelect = document.getElementById('jurisdiction');
+        if (jurSelect) {
+            const selected = jurSelect.value;
+            jurSelect.innerHTML = tr.jurisdictions.map((j,i) => `<option value="${j}">${j}</option>`).join('');
+            jurSelect.value = selected || tr.jurisdictions[0];
+        }
+
+        // How to list
+        const howToList = document.querySelector('.info-box ul');
+        if (howToList && tr.howTo) {
+            howToList.innerHTML = tr.howTo.map(item => `<li>${item}</li>`).join('');
+        }
+
+        // Login button text
+        set('loginBtn', tr.loginBtn);
+
+        // Chat panel subtitle
+        const chatSub = document.getElementById('chatSubtitle');
+        if (chatSub) chatSub.textContent = tr.chatSubtitle || '';
+
+        // Update active mode section titles if a mode is selected
+        if (CONFIG.currentMode) {
+            const cfg = CONFIG.TITLES[CONFIG.currentMode];
+            if (cfg) {
+                const sectionTitle = document.getElementById('sectionTitle');
+                if (sectionTitle) sectionTitle.textContent = cfg.section;
+                const genBtn = document.getElementById('generateBtn');
+                if (genBtn) genBtn.textContent = cfg.button;
+            }
+        }
+    }
+
+    // Apply saved locale on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        const saved = CONFIG.getLocale();
+        setAppLocale(saved);
+    });
+    </script>
 
 </body>
 </html>

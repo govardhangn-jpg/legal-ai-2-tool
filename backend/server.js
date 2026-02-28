@@ -44,6 +44,7 @@ else                     console.log('🔑 ElevenLabs API key loaded');
 // 5️⃣ Create Anthropic client
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
+
 // 6️⃣ Create Express app
 const app = express();
 
@@ -240,7 +241,39 @@ app.post('/api/chat', requireAuth, async (req, res) => {
             if (!body.contractType || !body.contractDetails)
                 return res.status(400).json({ success: false, error: 'contractType and contractDetails are required' });
 
-            prompt = `You are an expert Indian legal professional specializing in contract drafting. Draft a ${body.contractType} according to Indian law in P Mogha format.
+            const isJapanese = body.locale === 'ja-JP';
+
+            if (isJapanese) {
+                prompt = `あなたは日本法を専門とする法律の専門家です。以下の条件に基づき、${body.contractType}の草案を作成してください。
+
+契約の詳細・主要条件：
+${body.contractDetails}
+
+要件：
+1. 日本の裁判所に適した正式な法律文書の文体を使用すること
+2. 日本法に基づき、この種類の契約に必要な標準条項をすべて含めること
+3. 民法、借地借家法、労働基準法など、適用される日本の法令を参照すること
+4. 印鑑・署名欄を含む適切な締結条項を付けること
+5. 日本の裁判所に適した管轄・紛争解決条項を追加すること
+6. 印紙税・登記要件への準拠を確認すること
+7. 明確な条項と小項目で適切にフォーマットすること
+
+========================
+フォーマット指示（必須）
+========================
+- 文書タイトルは全角大文字（最初の行のみ）
+- 番号付き見出しを使用：第1条、第2条、第3条
+- 小見出し：第1条第1項、第1条第2項
+- 各条項は新しい行から始めること
+- 主要セクション間は一行空けること
+- マークダウン、箇条書き、特殊記号は使用しないこと
+- 絵文字や装飾文字は使用しないこと
+- 文は簡潔かつ正式に保つこと
+- 印刷に適したプレーンテキストで出力すること
+- 文書の末尾に免責事項セクションを付けること
+========================`;
+            } else {
+                prompt = `You are an expert Indian legal professional specializing in contract drafting. Draft a ${body.contractType} according to Indian law in P Mogha format.
 
 Contract Details & Key Terms:
 ${body.contractDetails}
@@ -271,13 +304,53 @@ FORMAT INSTRUCTIONS (MANDATORY)
 - Output must be plain text suitable for printing
 - End the document with a DISCLAIMER section
 ========================`;
+            }
 
         // ── RESEARCH ──────────────────────────────────────────────────
         } else if (body.mode === 'research') {
             if (!body.legalIssue || !body.researchQuery)
                 return res.status(400).json({ success: false, error: 'legalIssue and researchQuery are required' });
 
-            prompt = `You are an expert Indian legal researcher. Conduct comprehensive case law research on the following matter by referring to the Manupatra legal database only.
+            const isJapanese = body.locale === 'ja-JP';
+
+            if (isJapanese) {
+                prompt = `あなたは日本法を専門とする法律研究の専門家です。以下の事項について包括的な判例調査を実施してください。
+
+法的問題：
+${body.legalIssue}
+
+背景：
+${body.researchQuery}
+
+管轄裁判所：
+${body.jurisdiction || '全裁判所'}
+
+以下の内容を提供してください：
+1. 関連判例：重要判例・最新判例の一覧（事件名、引用、裁判所、年）
+2. 法的原則：これらの判例が確立した主要原則
+3. 法令規定：適用される法律の該当条文
+4. 分析：これらの判例が本件クエリにどう適用されるか
+5. 現在の法的立場：現在の主流の見解
+6. 実務的適用：裁判所が通常どのように判断するか
+
+最高裁判所および高等裁判所の権威ある判決に焦点を当てること。判例引用は日本の標準形式で記載すること。
+
+========================
+フォーマット指示（必須）
+========================
+- 文書タイトルは全角大文字（最初の行のみ）
+- 番号付き見出しを使用：1.、2.、3.
+- 小見出し：1.1、1.2、2.1
+- 各条項は新しい行から始めること
+- 主要セクション間は一行空けること
+- マークダウン、箇条書き、特殊記号は使用しないこと
+- 絵文字や装飾文字は使用しないこと
+- 文は簡潔かつ正式に保つこと
+- 印刷に適したプレーンテキストで出力すること
+- 文書の末尾に免責事項セクションを付けること
+========================`;
+            } else {
+                prompt = `You are an expert Indian legal researcher. Conduct comprehensive case law research on the following matter by referring to the Manupatra legal database only.
 
 Legal Issue:
 ${body.legalIssue}
@@ -312,13 +385,56 @@ FORMAT INSTRUCTIONS (MANDATORY)
 - Output must be plain text suitable for printing
 - End the document with a DISCLAIMER section
 ========================`;
+            }
 
         // ── OPINION ───────────────────────────────────────────────────
         } else if (body.mode === 'opinion') {
             if (!body.opinionTopic || !body.opinionQuery)
                 return res.status(400).json({ success: false, error: 'opinionTopic and opinionQuery are required' });
 
-            prompt = `You are a senior Indian advocate providing a detailed legal opinion. Analyze the following matter comprehensively.
+            const isJapanese = body.locale === 'ja-JP';
+
+            if (isJapanese) {
+                prompt = `あなたは日本法を専門とするシニア弁護士として、詳細な法律意見書を提供してください。以下の事項を包括的に分析してください。
+
+法的事項：
+${body.opinionTopic}
+
+事実関係：
+${body.opinionQuery}
+
+適用法令：
+${body.applicableLaws || '関連する日本の法令'}
+
+以下を含む包括的な法律意見書を作成してください：
+
+1. 事実の要約：状況の簡潔な概要
+2. 法的問題：対処すべき具体的な法的問題の特定
+3. 適用法令：関連する法律・条文、主要条項、規則・規制
+4. 判例分析：関連する最高裁・高裁の先例、これらの判例の適用、現在の司法動向
+5. 法的分析：事件・立場の強み、潜在的な弱点やリスク、想定される反論
+6. 意見と助言：法律意見、成功の可能性、推奨される行動方針、代替オプション
+7. 実務的考慮事項：手続きの手順、必要書類、スケジュール見積もり、費用見通し
+8. 結論：意見と提言の明確な要約
+
+クライアントへの提供に適した正式な法律意見書としてフォーマットすること。徹底的かつバランスのとれた内容で、関連する法的権威を引用すること。
+
+========================
+フォーマット指示（必須）
+========================
+- 文書タイトルは全角大文字（最初の行のみ）
+- 番号付き見出しを使用：第1条、第2条、第3条
+- 小見出し：第1条第1項、第1条第2項
+- 各条項は新しい行から始めること
+- 主要セクション間は一行空けること
+- マークダウン、箇条書き、特殊記号は使用しないこと
+- 絵文字や装飾文字は使用しないこと
+- 文は簡潔かつ正式に保つこと
+- 印刷に適したプレーンテキストで出力すること
+- 文書の末尾に免責事項セクションを付けること
+========================`;
+            } else {
+                prompt = `You are a senior Indian advocate providing a detailed legal opinion. Analyze the following matter comprehensively.
 
 Topic:
 ${body.opinionTopic}
@@ -356,6 +472,7 @@ FORMAT INSTRUCTIONS (MANDATORY)
 - Output must be plain text suitable for printing
 - End the document with a DISCLAIMER section
 ========================`;
+            }
 
         } else {
             return res.status(400).json({ success: false, error: 'Invalid mode. Must be contract, research, or opinion.' });
@@ -460,10 +577,55 @@ app.post('/api/download/word', requireAuth, async (req, res) => {
 
 
 // =====================================================
-//   Transcribe Audio — placeholder (requires OPENAI_API_KEY)
+//   Transcribe Audio  🔐 Protected  (Claude AI)
+//   POST /api/transcribe  multipart/form-data  field: audio
 // =====================================================
-app.post('/api/transcribe', requireAuth, upload.single('audio'), (req, res) => {
-    res.status(200).json({ text: '', error: 'Transcription not configured' });
+app.post('/api/transcribe', requireAuth, upload.single('audio'), async (req, res) => {
+    if (!ANTHROPIC_API_KEY) {
+        return res.status(503).json({ text: '', error: 'Transcription not configured — ANTHROPIC_API_KEY missing' });
+    }
+
+    if (!req.file) {
+        return res.status(400).json({ text: '', error: 'No audio file received' });
+    }
+
+    try {
+        console.log(`🎙️  Transcribe request from ${req.user.email} — ${req.file.size} bytes (${req.file.mimetype})`);
+
+        // Convert audio buffer to base64
+        const audioBase64  = req.file.buffer.toString('base64');
+        const mimeType     = req.file.mimetype || 'audio/webm';
+
+        const response = await anthropic.messages.create({
+            model:      'claude-opus-4-5',
+            max_tokens: 1024,
+            messages: [{
+                role: 'user',
+                content: [
+                    {
+                        type: 'document',
+                        source: {
+                            type:       'base64',
+                            media_type: mimeType,
+                            data:       audioBase64
+                        }
+                    },
+                    {
+                        type: 'text',
+                        text: 'Please transcribe the speech in this audio recording. Return ONLY the transcribed text with no explanation, preamble or punctuation changes. Preserve Indian legal terminology, court names, acts and statute names exactly as spoken.'
+                    }
+                ]
+            }]
+        });
+
+        const text = response.content[0]?.text?.trim() || '';
+        console.log(`✅ Transcribed: "${text.substring(0, 80)}..."`);
+        res.json({ text });
+
+    } catch (err) {
+        console.error('❌ Claude transcription error:', err.message);
+        res.status(500).json({ text: '', error: 'Transcription failed: ' + err.message });
+    }
 });
 
 // =====================================================
@@ -482,7 +644,26 @@ app.post('/api/chat-assistant', requireAuth, async (req, res) => {
             return res.status(500).json({ error: 'Anthropic API key not configured' });
 
         // ── Build system prompt ────────────────────────────────
-        let systemPrompt = `You are SAMARTHAA, a senior Indian legal assistant with deep expertise in:
+        const isJapaneseChat = body.locale === 'ja-JP';
+
+        let systemPrompt = isJapaneseChat
+        ? `あなたはSAMARTHAAです。日本法を専門とするシニア法律アシスタントです。以下の分野に深い専門知識を持っています：
+- 日本の憲法、民事・刑事訴訟手続き
+- 民法、商法、労働基準法、借地借家法、会社法、その他主要な日本の法令
+- 最高裁判所および高等裁判所の判決・先例
+- 企業法、家族法、不動産法、労働法（日本法域）
+- 日本の市民や企業への実務的な法律ガイダンス
+
+コミュニケーションスタイル：
+- 法律家でない方にも理解しやすい明確な日本語で回答してください
+- 簡単な質問は3〜5文、複雑な質問はより詳しく回答してください
+- 関連する日本の法律、条文、判例を必ず引用してください
+- 不確かな場合は推測せず、明確にそう伝えてください
+- 複雑な回答の末尾に実践的な次のステップの提案を加えてください
+- 機密情報が必要なアドバイスは控え、弁護士への相談を勧めてください
+
+重要：あなたは音声アシスタントです。会話的で話し言葉に適した回答を心がけてください。箇条書き、マークダウン、フォーマットは避け、流れるような文章で書いてください。`
+        : `You are SAMARTHAA, a senior Indian legal assistant with deep expertise in:
 - Indian constitutional law, civil and criminal procedure
 - Indian Contract Act 1872, Transfer of Property Act 1882, CPC, CrPC, IPC, and all major Indian statutes
 - Supreme Court and High Court judgments and precedents
