@@ -337,7 +337,7 @@ const ChatAssistant = (() => {
 
             // GainNode for volume boost (1.0 = normal, 2.0 = double, 3.0 = triple)
             const gainNode = chatAudioCtx.createGain();
-            gainNode.gain.value = 2.5;
+            gainNode.gain.value = 3.75;
             gainNode.connect(chatAudioCtx.destination);
 
             chatAudioSrc        = chatAudioCtx.createBufferSource();
@@ -394,13 +394,25 @@ const ChatAssistant = (() => {
     function startRecording() {
         if (isRecording) { stopRecording(); return; }
 
-        // Check if Speech Recognition is available
+        // Android: always use MediaRecorder + Whisper (Web Speech is unreliable on Android)
+        if (isAndroid) {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => startMediaRecorder(stream))
+                .catch(err => {
+                    console.error('Mic permission error:', err);
+                    showMicStatus('Mic blocked. Allow microphone in Chrome Site Settings.');
+                    setTimeout(() => showMicStatus(''), 5000);
+                });
+            return;
+        }
+
+        // Desktop/iOS: use Web Speech API
         if (!hasSpeechRecognition) {
             showMicStatus('Voice not supported. Please type your question.');
             return;
         }
 
-        // Request mic permission first (required on Android)
+        // Request mic permission first
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 // Release the stream — Web Speech API manages its own mic
@@ -615,6 +627,77 @@ const ChatAssistant = (() => {
     //   INIT
     // ══════════════════════════════════════════════════════════════
 
+    // ══════════════════════════════════════════════════════════════
+    //   DOWNLOAD CHAT AS PDF
+    // ══════════════════════════════════════════════════════════════
+
+    async function downloadChatPDF() {
+        if (conversationHistory.length === 0) {
+            alert('No conversation to download yet.');
+            return;
+        }
+
+        const token = localStorage.getItem('token');
+        if (!token) { alert('Please log in first.'); return; }
+
+        // Build plain-text transcript
+        const now    = new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' });
+        const mode   = documentContext
+            ? { contract: 'Contract Drafting', research: 'Case Research', opinion: 'Legal Opinion' }[documentContext.mode] || documentContext.mode
+            : 'General';
+
+        let content = `SAMARTHAA-LEGAL — CHAT TRANSCRIPT\n`;
+        content    += `Mode: ${mode}\n`;
+        content    += `Date: ${now}\n`;
+        content    += `${'─'.repeat(60)}\n\n`;
+
+        conversationHistory.forEach(msg => {
+            const speaker = msg.role === 'user' ? 'YOU' : 'SAMARTHAA AI';
+            content += `${speaker}\n${msg.content}\n\n`;
+        });
+
+        content += `${'─'.repeat(60)}\n`;
+        content += `Disclaimer: This AI-generated conversation is for informational purposes only and does not constitute legal advice. Always consult a qualified legal professional.`;
+
+        // Use existing backend PDF endpoint
+        const baseUrl = (window.CONFIG?.API?.BACKEND_URL || 'https://legal-ai-2-tool-1.onrender.com/api/chat')
+            .replace('/api/chat', '');
+
+        const btn = document.getElementById('chatDownloadBtn');
+        const original = btn ? btn.innerHTML : '';
+        if (btn) { btn.innerHTML = '⏳'; btn.disabled = true; }
+
+        try {
+            const response = await fetch(`${baseUrl}/api/download/pdf`, {
+                method:  'POST',
+                headers: {
+                    'Content-Type':  'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ content })
+            });
+
+            if (!response.ok) throw new Error('Download failed');
+
+            const blob     = await response.blob();
+            const url      = window.URL.createObjectURL(blob);
+            const a        = document.createElement('a');
+            a.href         = url;
+            a.download     = `samarthaa-legal-chat-${Date.now()}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            if (btn) { btn.innerHTML = '✓'; setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 2000); }
+
+        } catch (err) {
+            console.error('Chat PDF download error:', err);
+            alert('Failed to download PDF. Please try again.');
+            if (btn) { btn.innerHTML = original; btn.disabled = false; }
+        }
+    }
+
     function init() {
         triggerBtn    = document.getElementById('chatTriggerBtn');
         panel         = document.getElementById('chatPanel');
@@ -658,6 +741,10 @@ const ChatAssistant = (() => {
         // Clear conversation button
         const clearBtn = document.getElementById('chatClearBtn');
         if (clearBtn) clearBtn.addEventListener('click', clearConversation);
+
+        // Download chat as PDF
+        const downloadBtn = document.getElementById('chatDownloadBtn');
+        if (downloadBtn) downloadBtn.addEventListener('click', downloadChatPDF);
 
         // Close button inside panel header
         const closeBtn = document.getElementById('chatCloseBtn');
