@@ -29,7 +29,7 @@ const UI = {
             jurisdiction:    document.getElementById('jurisdiction'),
             opinionTopic:    document.getElementById('opinionTopic'),
             opinionQuery:    document.getElementById('opinionQuery'),
-            applicableLaws:  document.getElementById('applicableLaws'),
+            applicableLaws:  document.getElementById('applicableLawsInput'),
 
             generateBtn:     document.getElementById('generateBtn'),
             clearBtn:        document.getElementById('clearBtn'),
