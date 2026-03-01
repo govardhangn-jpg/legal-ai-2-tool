@@ -19,7 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    UI.init();
+    // NOTE: UI.init() is already called by ui.js on DOMContentLoaded.
+    // Calling it again here would double all event listeners → multiple downloads.
+    // UI.init() removed from here intentionally.
     console.log('✅ SAMARTHAA-LEGAL initialized');
 
     // ── LOGOUT ──────────────────────────────────────────────────────
@@ -146,6 +148,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (window.ChatAssistant) window.ChatAssistant.showTrigger();
                     clearLoginError();
                     setLoginLoading(false);
+
+                    // Re-init Voice AFTER app is visible so btnReadAloud exists in DOM
+                    if (window.Voice) window.Voice.reinit();
 
                     if (registered) startSessionWatcher();
                     return;

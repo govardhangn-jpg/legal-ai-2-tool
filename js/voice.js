@@ -338,28 +338,40 @@ const Voice = (() => {
     }
 
     // ── Init ───────────────────────────────────────────────────────
+    let _initialized = false;
+
     function init() {
         // Wire mic buttons for all modes
         ['contract', 'research', 'opinion'].forEach(wireModeMicButtons);
-
-        // Read Aloud button
-        const btnReadAloud = document.getElementById('btnReadAloud');
-        if (btnReadAloud) {
-            btnReadAloud.addEventListener('click', () => {
-                const content = document.getElementById('resultContent');
-                if (content) readAloud(content.textContent);
-            });
-        }
 
         // Stop everything on page unload
         window.addEventListener('beforeunload', () => {
             stopRecording(null, null);
             stopSpeaking();
         });
+
+        // Wire Read Aloud button if already visible
+        _wireReadAloudBtn();
+    }
+
+    // Called after login when mainApp is visible and btnReadAloud exists
+    function reinit() {
+        _wireReadAloudBtn();
+    }
+
+    function _wireReadAloudBtn() {
+        const btn = document.getElementById('btnReadAloud');
+        if (!btn || btn._readAloudBound) return; // already bound — skip
+        btn._readAloudBound = true;
+        btn.addEventListener('click', () => {
+            const content = document.getElementById('resultContent');
+            if (content) readAloud(content.textContent);
+        });
     }
 
     return {
         init,
+        reinit,
         onModeChange,
         showReadAloud,
         hideReadAloud,

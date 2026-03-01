@@ -7,6 +7,10 @@ const UI = {
     currentDocumentId: null,
 
     init() {
+        // Guard against double-init (called from both ui.js DOMContentLoaded and app.js)
+        if (this._initialized) return;
+        this._initialized = true;
+
         this.elements = {
             modeCards: document.querySelectorAll('.mode-card'),
 
@@ -220,7 +224,7 @@ const UI = {
                     'Content-Type':  'application/json',
                     'Authorization': token ? `Bearer ${token}` : ''
                 },
-                body: JSON.stringify({ content })
+                body: JSON.stringify({ content, locale: window.CONFIG?.getLocale() || 'en-IN' })
             });
 
             if (!response.ok) { this.showError('Failed to download document'); return; }
