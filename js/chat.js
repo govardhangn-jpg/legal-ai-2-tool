@@ -354,18 +354,13 @@ const ChatAssistant = (() => {
 
         const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
 
-        // Increment sequence — any in-flight call with an older ID will bail out
         const mySeq = ++_speakSeq;
-
-        stopSpeaking(); // stop any current audio
-
+        stopSpeaking();
         isSpeaking = true;
         if (triggerBtn) triggerBtn.classList.add('speaking');
 
         try {
             ttsAbortCtrl = new AbortController();
-
-            // Trim to 1500 chars for chat responses (keep it snappy)
             const trimmed = text.trim().substring(0, 1500);
 
             const response = await fetch(`${baseUrl}/api/tts`, {
@@ -378,45 +373,69 @@ const ChatAssistant = (() => {
                 signal: ttsAbortCtrl.signal
             });
 
-            if (!response.ok) throw new Error('TTS failed');
+            if (!response.ok) throw new Error(`TTS ${response.status}`);
 
             const arrayBuffer = await response.arrayBuffer();
-
-            // A newer speakText() was called while we were fetching — abandon this one
             if (mySeq !== _speakSeq) return;
 
-            chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (isAndroid) {
+                // ── Android: HTMLAudioElement ──────────────────────────────
+                // AudioContext.resume() is blocked after async fetch on Android Chrome.
+                // HTMLAudioElement plays reliably after MediaRecorder mic permission is granted.
+                const blob    = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+                const blobUrl = URL.createObjectURL(blob);
+                chatAudioEl   = new Audio(blobUrl);
+                chatAudioEl.volume = 1.0;
+                chatAudioEl.onended = () => {
+                    URL.revokeObjectURL(blobUrl);
+                    finishSpeaking();
+                    if (onFinish) onFinish();
+                };
+                chatAudioEl.onerror = () => {
+                    URL.revokeObjectURL(blobUrl);
+                    if (mySeq === _speakSeq) fallbackSpeak(text, onFinish);
+                };
+                chatAudioEl.play().catch(() => {
+                    if (mySeq === _speakSeq) fallbackSpeak(text, onFinish);
+                });
 
-            // Resume if suspended (required on some mobile browsers)
-            if (chatAudioCtx.state === 'suspended') {
-                await chatAudioCtx.resume();
+            } else {
+                // ── iOS / Desktop: AudioContext ────────────────────────────
+                chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (chatAudioCtx.state === 'suspended') await chatAudioCtx.resume();
+
+                const decoded  = await chatAudioCtx.decodeAudioData(arrayBuffer);
+                const gainNode = chatAudioCtx.createGain();
+                gainNode.gain.value = 3.75;
+                gainNode.connect(chatAudioCtx.destination);
+
+                chatAudioSrc        = chatAudioCtx.createBufferSource();
+                chatAudioSrc.buffer = decoded;
+                chatAudioSrc.connect(gainNode);
+                chatAudioSrc.onended = () => {
+                    finishSpeaking();
+                    if (onFinish) onFinish();
+                };
+                chatAudioSrc.start(0);
             }
-
-            const decoded = await chatAudioCtx.decodeAudioData(arrayBuffer);
-
-            const gainNode = chatAudioCtx.createGain();
-            gainNode.gain.value = 3.75;
-            gainNode.connect(chatAudioCtx.destination);
-
-            chatAudioSrc        = chatAudioCtx.createBufferSource();
-            chatAudioSrc.buffer = decoded;
-            chatAudioSrc.connect(gainNode);
-            chatAudioSrc.onended = () => {
-                finishSpeaking();
-                if (onFinish) onFinish();
-            };
-            chatAudioSrc.start(0);
 
         } catch (err) {
             if (err.name === 'AbortError') return;
             if (mySeq !== _speakSeq) return;
-            // Fallback to browser TTS
             fallbackSpeak(text, onFinish);
         }
     }
 
     function stopSpeaking() {
         ttsAbortCtrl && ttsAbortCtrl.abort();
+        // Android path
+        if (chatAudioEl) {
+            chatAudioEl.onended = null;
+            chatAudioEl.onerror = null;
+            try { chatAudioEl.pause(); chatAudioEl.src = ''; } catch {}
+            chatAudioEl = null;
+        }
+        // iOS/Desktop path
         if (chatAudioSrc) {
             try { chatAudioSrc.stop(); } catch {}
             chatAudioSrc = null;
@@ -424,11 +443,6 @@ const ChatAssistant = (() => {
         if (chatAudioCtx) {
             try { chatAudioCtx.close(); } catch {}
             chatAudioCtx = null;
-        }
-        // Also stop HTMLAudioElement if present
-        if (chatAudioEl) {
-            try { chatAudioEl.pause(); chatAudioEl.src = ''; } catch {}
-            chatAudioEl = null;
         }
         window.speechSynthesis && window.speechSynthesis.cancel();
         finishSpeaking();
