@@ -27,6 +27,8 @@ const ChatAssistant = (() => {
     let chatAudioSrc    = null;
     let isSpeaking      = false;
     let _sentByVoice    = false;  // true when message was sent via mic tap
+    let _audioUnlocked  = false;  // whether audio has been unlocked by a user gesture
+    let _pendingSpeak   = null;   // text waiting to be spoken once audio unlocked
     let ttsAbortCtrl    = null;
     let chatAudioEl     = null;   // HTMLAudioElement — mobile-safe playback
 
@@ -324,13 +326,18 @@ const ChatAssistant = (() => {
             addMessage('ai', aiReply);
             conversationHistory.push({ role: 'assistant', content: aiReply });
 
-            // Auto-activate speak button on this message if sent by voice
-            // (button click = user gesture context preserved by browser)
+            // Auto-speak if message was sent by voice
             if (_sentByVoice) {
                 _sentByVoice = false;
-                const latestSpeakBtn = messagesEl.querySelector('.chat-msg.ai:last-child .chat-msg-speak');
-                if (latestSpeakBtn && !latestSpeakBtn.classList.contains('playing')) {
-                    latestSpeakBtn.click();
+                if (_audioUnlocked) {
+                    // Audio unlocked — speak directly
+                    speakText(aiReply);
+                } else {
+                    // Audio not yet unlocked — queue it, will play on next user tap
+                    _pendingSpeak = { text: aiReply, onFinish: null };
+                    // Still try via speak button click as fallback
+                    const latestSpeakBtn = messagesEl.querySelector('.chat-msg.ai:last-child .chat-msg-speak');
+                    if (latestSpeakBtn) latestSpeakBtn.click();
                 }
             }
 
@@ -824,7 +831,7 @@ ${rows}
         triggerBtn.addEventListener('click', toggle);
 
         // Send button
-        sendBtn.addEventListener('click', sendMessage);
+        sendBtn.addEventListener('click', () => { unlockAudio(); sendMessage(); });
 
         // Enter to send (Shift+Enter for newline)
         chatInput.addEventListener('keydown', (e) => {
@@ -837,11 +844,31 @@ ${rows}
         // Auto-resize textarea
         chatInput.addEventListener('input', autoResizeInput);
 
-        // Mic button
+    // ── Audio unlock (mobile requires gesture before audio.play()) ────────────
+    function unlockAudio() {
+        if (_audioUnlocked) return;
+        _audioUnlocked = true;
+        try {
+            const silent = new Audio("data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEtpdCAtIG11c2ljIGZvciBldmVyeW9uZSEhAAA=");
+            silent.volume = 0.001;
+            silent.play().catch(() => {});
+        } catch(e) {}
+        if (_pendingSpeak) {
+            const { text, onFinish } = _pendingSpeak;
+            _pendingSpeak = null;
+            setTimeout(() => speakText(text, onFinish), 50);
+        }
+    }
+
+        // Mic button — also unlocks audio on tap
         micBtn.addEventListener('click', () => {
-            stopSpeaking(); // stop AI speaking before user speaks
+            unlockAudio();
+            stopSpeaking();
             startRecording();
         });
+
+        // Unlock audio on chatInput focus (mobile keyboard tap = user interaction)
+        chatInput.addEventListener('focus', unlockAudio);
 
         // Clear context
         contextClear.addEventListener('click', clearContext);
