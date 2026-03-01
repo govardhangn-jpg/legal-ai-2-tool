@@ -29,128 +29,94 @@ const fs           = require('fs');
 
 // ══════════════════════════════════════════════════════════════════
 //   MULTI-SCRIPT FONT SYSTEM
-//   Noto fonts cover all Indian scripts + Japanese/CJK
-//   All fonts are downloaded once at startup and cached in /tmp
+//   Fonts are installed as npm packages — no runtime downloads needed
+//   npm install @fontsource/noto-sans-jp @fontsource/noto-sans
 // ══════════════════════════════════════════════════════════════════
 
-const FONTS = {
-    // Japanese / CJK
-    japanese:  { path: path.join(os.tmpdir(), 'NotoSansCJK.otf'),      url: 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/SubsetOTF/JP/NotoSansCJKjp-Regular.otf' },
-    // Indian scripts
-    devanagari:{ path: path.join(os.tmpdir(), 'NotoSansDevanagari.ttf'),url: 'https://raw.githubusercontent.com/notofonts/devanagari/main/fonts/NotoSansDevanagari/unhinted/ttf/NotoSansDevanagari-Regular.ttf' },
-    kannada:   { path: path.join(os.tmpdir(), 'NotoSansKannada.ttf'),   url: 'https://raw.githubusercontent.com/notofonts/kannada/main/fonts/NotoSansKannada/unhinted/ttf/NotoSansKannada-Regular.ttf' },
-    tamil:     { path: path.join(os.tmpdir(), 'NotoSansTamil.ttf'),     url: 'https://raw.githubusercontent.com/notofonts/tamil/main/fonts/NotoSansTamil/unhinted/ttf/NotoSansTamil-Regular.ttf' },
-    telugu:    { path: path.join(os.tmpdir(), 'NotoSansTelugu.ttf'),    url: 'https://raw.githubusercontent.com/notofonts/telugu/main/fonts/NotoSansTelugu/unhinted/ttf/NotoSansTelugu-Regular.ttf' },
-    malayalam: { path: path.join(os.tmpdir(), 'NotoSansMalayalam.ttf'), url: 'https://raw.githubusercontent.com/notofonts/malayalam/main/fonts/NotoSansMalayalam/unhinted/ttf/NotoSansMalayalam-Regular.ttf' },
-    bengali:   { path: path.join(os.tmpdir(), 'NotoSansBengali.ttf'),   url: 'https://raw.githubusercontent.com/notofonts/bengali/main/fonts/NotoSansBengali/unhinted/ttf/NotoSansBengali-Regular.ttf' },
-    gujarati:  { path: path.join(os.tmpdir(), 'NotoSansGujarati.ttf'),  url: 'https://raw.githubusercontent.com/notofonts/gujarati/main/fonts/NotoSansGujarati/unhinted/ttf/NotoSansGujarati-Regular.ttf' },
-    gurmukhi:  { path: path.join(os.tmpdir(), 'NotoSansGurmukhi.ttf'),  url: 'https://raw.githubusercontent.com/notofonts/gurmukhi/main/fonts/NotoSansGurmukhi/unhinted/ttf/NotoSansGurmukhi-Regular.ttf' },
-};
+// Resolve font file paths from npm packages installed in node_modules
+function resolveNpmFont(pkg, file) {
+    try {
+        const dir = path.dirname(require.resolve(pkg + '/package.json'));
+        const fontPath = path.join(dir, 'files', file);
+        if (fs.existsSync(fontPath)) return fontPath;
+    } catch(e) {}
+    return null;
+}
+
+// Build font map from npm packages
+const FONT_PATHS = (() => {
+    const map = {};
+
+    // Japanese — @fontsource/noto-sans-jp
+    map.japanese = resolveNpmFont('@fontsource/noto-sans-jp', 'noto-sans-jp-japanese-400-normal.woff2')
+                || resolveNpmFont('@fontsource/noto-sans-jp', 'noto-sans-jp-400-normal.woff2');
+
+    // Devanagari (Hindi/Marathi) — @fontsource/noto-sans-devanagari
+    map.devanagari = resolveNpmFont('@fontsource/noto-sans-devanagari', 'noto-sans-devanagari-devanagari-400-normal.woff2')
+                  || resolveNpmFont('@fontsource/noto-sans-devanagari', 'noto-sans-devanagari-400-normal.woff2');
+
+    // Kannada — @fontsource/noto-sans-kannada
+    map.kannada = resolveNpmFont('@fontsource/noto-sans-kannada', 'noto-sans-kannada-kannada-400-normal.woff2')
+               || resolveNpmFont('@fontsource/noto-sans-kannada', 'noto-sans-kannada-400-normal.woff2');
+
+    // Tamil — @fontsource/noto-sans-tamil
+    map.tamil = resolveNpmFont('@fontsource/noto-sans-tamil', 'noto-sans-tamil-tamil-400-normal.woff2')
+             || resolveNpmFont('@fontsource/noto-sans-tamil', 'noto-sans-tamil-400-normal.woff2');
+
+    // Telugu — @fontsource/noto-sans-telugu
+    map.telugu = resolveNpmFont('@fontsource/noto-sans-telugu', 'noto-sans-telugu-telugu-400-normal.woff2')
+              || resolveNpmFont('@fontsource/noto-sans-telugu', 'noto-sans-telugu-400-normal.woff2');
+
+    // Malayalam — @fontsource/noto-sans-malayalam
+    map.malayalam = resolveNpmFont('@fontsource/noto-sans-malayalam', 'noto-sans-malayalam-malayalam-400-normal.woff2')
+                 || resolveNpmFont('@fontsource/noto-sans-malayalam', 'noto-sans-malayalam-400-normal.woff2');
+
+    // Bengali — @fontsource/noto-sans-bengali
+    map.bengali = resolveNpmFont('@fontsource/noto-sans-bengali', 'noto-sans-bengali-bengali-400-normal.woff2')
+               || resolveNpmFont('@fontsource/noto-sans-bengali', 'noto-sans-bengali-400-normal.woff2');
+
+    // Gujarati — @fontsource/noto-sans-gujarati
+    map.gujarati = resolveNpmFont('@fontsource/noto-sans-gujarati', 'noto-sans-gujarati-gujarati-400-normal.woff2')
+                || resolveNpmFont('@fontsource/noto-sans-gujarati', 'noto-sans-gujarati-400-normal.woff2');
+
+    // Gurmukhi/Punjabi — @fontsource/noto-sans-gurmukhi
+    map.gurmukhi = resolveNpmFont('@fontsource/noto-sans-gurmukhi', 'noto-sans-gurmukhi-gurmukhi-400-normal.woff2')
+                || resolveNpmFont('@fontsource/noto-sans-gurmukhi', 'noto-sans-gurmukhi-400-normal.woff2');
+
+    // Log what was found
+    for (const [key, val] of Object.entries(map)) {
+        if (val) console.log('✅ Font ready: ' + key + ' → ' + val);
+        else     console.warn('⚠️  Font missing: ' + key + ' (install @fontsource/noto-sans-' + key + ')');
+    }
+    return map;
+})();
 
 // Unicode ranges for script detection
 const SCRIPT_RANGES = [
     { name: 'japanese',   regex: /[　-鿿豈-﫿＀-￯]/ },
-    { name: 'devanagari', regex: /[ऀ-ॿ]/ },   // Hindi, Marathi, Sanskrit
+    { name: 'devanagari', regex: /[ऀ-ॿ]/ },
     { name: 'kannada',    regex: /[ಀ-೿]/ },
     { name: 'tamil',      regex: /[஀-௿]/ },
     { name: 'telugu',     regex: /[ఀ-౿]/ },
     { name: 'malayalam',  regex: /[ഀ-ൿ]/ },
     { name: 'bengali',    regex: /[ঀ-৿]/ },
     { name: 'gujarati',   regex: /[઀-૿]/ },
-    { name: 'gurmukhi',   regex: /[਀-੿]/ },   // Punjabi
+    { name: 'gurmukhi',   regex: /[਀-੿]/ },
 ];
 
-// Detect which script a text contains (returns font key or null for Latin/English)
 function detectScript(text) {
     for (const { name, regex } of SCRIPT_RANGES) {
         if (regex.test(text)) return name;
     }
-    return null; // Latin / English — use Helvetica
+    return null;
 }
 
-// Download a single font file — with redirect following
-function downloadFont(key) {
-    const font = FONTS[key];
-    if (fs.existsSync(font.path)) return Promise.resolve(true);
-
-    return new Promise((resolve) => {
-        console.log('Downloading ' + key + ' font...');
-
-        const doRequest = (url, redirectCount) => {
-            if (redirectCount > 5) { console.warn('Too many redirects for ' + key); return resolve(false); }
-            const lib = url.startsWith('https') ? https : require('http');
-
-            lib.get(url, { headers: { 'User-Agent': 'Node.js' } }, (res) => {
-                // Follow 301/302/307 redirects
-                if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
-                    res.resume(); // drain response
-                    console.log('Redirect ' + res.statusCode + ' to ' + res.headers.location);
-                    return doRequest(res.headers.location, redirectCount + 1);
-                }
-                if (res.statusCode !== 200) {
-                    res.resume();
-                    console.warn(key + ' font HTTP ' + res.statusCode);
-                    return resolve(false);
-                }
-                const file = fs.createWriteStream(font.path);
-                res.pipe(file);
-                file.on('finish', () => {
-                    file.close();
-                    try {
-                        const size = fs.statSync(font.path).size;
-                        if (size < 5000) {
-                            fs.unlinkSync(font.path);
-                            console.warn(key + ' font too small (' + size + 'B) — discarded');
-                            return resolve(false);
-                        }
-                        console.log(key + ' font ready (' + Math.round(size/1024) + 'KB)');
-                        resolve(true);
-                    } catch(e) { resolve(false); }
-                });
-                file.on('error', (err) => {
-                    try { fs.unlinkSync(font.path); } catch {}
-                    console.warn(key + ' font write error: ' + err.message);
-                    resolve(false);
-                });
-            }).on('error', (err) => {
-                try { fs.unlinkSync(font.path); } catch {}
-                console.warn(key + ' font request error: ' + err.message);
-                resolve(false);
-            });
-        };
-
-        doRequest(font.url, 0);
-    });
-}
-
-// Ensure a specific font is available (downloads if needed)
-async function ensureFont(key) {
-    if (!FONTS[key]) return false;
-    if (fs.existsSync(FONTS[key].path)) return true;
-    return downloadFont(key);
-}
-
-// Get the font path to use for given text content
-async function getFontPath(text) {
+// Returns the font file path for the script in the given text, or null for Latin
+function getFontPath(text) {
     const script = detectScript(text);
-    if (!script) return null; // use Helvetica
-    const available = await ensureFont(script);
-    return available ? FONTS[script].path : null;
+    if (!script) return null;
+    return FONT_PATHS[script] || null;
 }
-
-// Track which fonts are confirmed ready
-const _fontReady = {};
-
-// Pre-download all fonts in background at startup — staggered to avoid hammering GitHub
-(async () => {
-    console.log('Font downloads starting in background...');
-    for (const key of Object.keys(FONTS)) {
-        downloadFont(key)
-            .then(ok => { _fontReady[key] = ok; })
-            .catch(() => { _fontReady[key] = false; });
-        await new Promise(r => setTimeout(r, 300)); // 300ms between each download
-    }
-})();
 const multer       = require('multer');
 const FormData     = require('form-data');
 const upload       = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -632,68 +598,155 @@ FORMAT INSTRUCTIONS (MANDATORY)
 
 // =====================================================
 //   PDF Download  🔐 Protected
+//   Returns styled HTML for browser print-to-PDF
+//   (Handles all Unicode scripts natively via Google Fonts)
 // =====================================================
-app.post('/api/download/pdf', requireAuth, async (req, res) => {
+app.post('/api/download/pdf', requireAuth, (req, res) => {
     const { content, locale } = req.body;
     if (!content) return res.status(400).send('No content provided');
 
-    // Auto-detect script from content (covers Japanese, all Indian scripts, Latin)
-    const fontPath = await getFontPath(content);
-    const isNonLatin = fontPath !== null;
     const isJapanese = locale === 'ja-JP' || /[\u3000-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(content);
 
-    const doc = new PDFDocument({ margin: 50, size: 'A4' });
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=legal-document.pdf');
-    doc.pipe(res);
+    // Detect Indian scripts for appropriate font
+    const isDevanagari = /[\u0900-\u097F]/.test(content);
+    const isKannada    = /[\u0C80-\u0CFF]/.test(content);
+    const isTamil      = /[\u0B80-\u0BFF]/.test(content);
+    const isTelugu     = /[\u0C00-\u0C7F]/.test(content);
+    const isMalayalam  = /[\u0D00-\u0D7F]/.test(content);
+    const isBengali    = /[\u0980-\u09FF]/.test(content);
+    const isGujarati   = /[\u0A80-\u0AFF]/.test(content);
+    const isGurmukhi   = /[\u0A00-\u0A7F]/.test(content);
 
-    // Set font — Noto for any non-Latin script, Helvetica for English
-    const setFont = () => {
-        if (isNonLatin && fontPath) {
-            doc.font(fontPath);
-        } else {
-            doc.font('Helvetica');
-        }
-    };
-    const setBoldFont = () => {
-        if (isNonLatin && fontPath) {
-            doc.font(fontPath); // Noto Regular (bold variant download optional)
-        } else {
-            doc.font('Helvetica-Bold');
-        }
-    };
+    // Pick Google Font based on script
+    let googleFont, fontFamily;
+    if (isJapanese) {
+        googleFont  = 'Noto+Sans+JP:wght@400;700';
+        fontFamily  = "'Noto Sans JP', sans-serif";
+    } else if (isDevanagari) {
+        googleFont  = 'Noto+Sans+Devanagari:wght@400;700';
+        fontFamily  = "'Noto Sans Devanagari', sans-serif";
+    } else if (isKannada) {
+        googleFont  = 'Noto+Sans+Kannada:wght@400;700';
+        fontFamily  = "'Noto Sans Kannada', sans-serif";
+    } else if (isTamil) {
+        googleFont  = 'Noto+Sans+Tamil:wght@400;700';
+        fontFamily  = "'Noto Sans Tamil', sans-serif";
+    } else if (isTelugu) {
+        googleFont  = 'Noto+Sans+Telugu:wght@400;700';
+        fontFamily  = "'Noto Sans Telugu', sans-serif";
+    } else if (isMalayalam) {
+        googleFont  = 'Noto+Sans+Malayalam:wght@400;700';
+        fontFamily  = "'Noto Sans Malayalam', sans-serif";
+    } else if (isBengali) {
+        googleFont  = 'Noto+Sans+Bengali:wght@400;700';
+        fontFamily  = "'Noto Sans Bengali', sans-serif";
+    } else if (isGujarati) {
+        googleFont  = 'Noto+Sans+Gujarati:wght@400;700';
+        fontFamily  = "'Noto Sans Gujarati', sans-serif";
+    } else if (isGurmukhi) {
+        googleFont  = 'Noto+Sans+Gurmukhi:wght@400;700';
+        fontFamily  = "'Noto Sans Gurmukhi', sans-serif";
+    } else {
+        googleFont  = 'Crimson+Pro:wght@400;700';
+        fontFamily  = "'Crimson Pro', Georgia, serif";
+    }
 
-    const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
-    const fontSize = isNonLatin ? 10 : 11;
-
-    // Title
-    setBoldFont();
-    doc.fontSize(isNonLatin ? 14 : 16).text(lines[0], { align: 'center' });
-    doc.moveDown(2);
-
-    // Body
-    lines.slice(1).forEach(line => {
-        const isHeading = /^(\d+(\.\d+)*\.|第\d+条|[A-Z]{2,})/.test(line);
-        if (isHeading) {
-            setBoldFont();
-            doc.moveDown(0.5).fontSize(fontSize).text(line, { align: 'left' });
-        } else {
-            setFont();
-            doc.moveDown(0.3).fontSize(fontSize).text(line, {
-                align: isJapanese ? 'left' : 'justify',
-                lineGap: 4
-            });
-        }
-    });
-
-    // Footer disclaimer — switches by locale
     const disclaimer = isJapanese
-        ? '免責事項：このAI生成文書は、資格を持つ法律の専門家が確認する必要があります。'
-        : 'Disclaimer: This document is AI-generated and must be reviewed by a qualified legal professional.';
+        ? '免責事項：このAI生成文書は、資格を持つ法律の専門家が確認する必要があります。専門的な法律アドバイスの代替ではありません。'
+        : 'Disclaimer: This document is AI-generated and must be reviewed by a qualified legal professional before use. Not a substitute for professional legal advice.';
 
-    setFont();
-    doc.moveDown(2).fontSize(8).text(disclaimer, { align: 'center' });
-    doc.end();
+    // Build HTML lines
+    const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+    const title = lines[0] || 'Legal Document';
+
+    const bodyLines = lines.slice(1).map(line => {
+        const escaped = line
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        const isHeading = /^(\d+(\.\d+)*\.|第\d+条|[A-Z\u30A0-\u30FF]{2,})/.test(line);
+        if (isHeading) {
+            return `<p class="heading">${escaped}</p>`;
+        }
+        return `<p>${escaped}</p>`;
+    }).join('\n');
+
+    const html = `<!DOCTYPE html>
+<html lang="${isJapanese ? 'ja' : 'en'}">
+<head>
+<meta charset="UTF-8">
+<title>${title.replace(/</g,'&lt;')}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=${googleFont}&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: ${fontFamily};
+    font-size: 11pt;
+    color: #1a1a1a;
+    line-height: 1.75;
+    padding: 40px 50px;
+    background: #fff;
+  }
+  .doc-header {
+    text-align: center;
+    border-bottom: 2px solid #c9a84c;
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+  .doc-header h1 {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #2c1a0e;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .doc-header .meta {
+    font-size: 9pt;
+    color: #7a6a50;
+    margin-top: 6px;
+  }
+  p {
+    margin-bottom: 8px;
+    text-align: ${isJapanese ? 'left' : 'justify'};
+  }
+  p.heading {
+    font-weight: 700;
+    margin-top: 16px;
+    margin-bottom: 4px;
+    color: #2c1a0e;
+  }
+  .footer {
+    margin-top: 40px;
+    padding-top: 12px;
+    border-top: 1px solid #d4c9a8;
+    font-size: 8pt;
+    color: #999;
+    text-align: center;
+    font-style: italic;
+  }
+  @media print {
+    body { padding: 0; }
+    @page { margin: 18mm 15mm; size: A4; }
+  }
+</style>
+</head>
+<body>
+<div class="doc-header">
+  <h1>${title.replace(/</g,'&lt;')}</h1>
+  <div class="meta">SAMARTHAA-LEGAL &nbsp;|&nbsp; ${new Date().toLocaleDateString(isJapanese ? 'ja-JP' : 'en-IN', { dateStyle: 'long' })}</div>
+</div>
+${bodyLines}
+<div class="footer">${disclaimer}</div>
+<script>
+  document.fonts.ready.then(() => { setTimeout(() => window.print(), 400); });
+</script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
 });
 
 // =====================================================

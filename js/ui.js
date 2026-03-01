@@ -216,6 +216,12 @@ const UI = {
 
         const token   = localStorage.getItem('token');
         const baseUrl = CONFIG.API.BACKEND_URL.replace('/chat', '');
+        const locale  = window.CONFIG?.getLocale() || 'en-IN';
+
+        // Disable button during download
+        const btn = type === 'pdf' ? this.elements.downloadPdfBtn : this.elements.downloadWordBtn;
+        const origText = btn ? btn.innerHTML : '';
+        if (btn) { btn.innerHTML = '⏳'; btn.disabled = true; }
 
         try {
             const response = await fetch(`${baseUrl}/download/${type}`, {
@@ -224,22 +230,42 @@ const UI = {
                     'Content-Type':  'application/json',
                     'Authorization': token ? `Bearer ${token}` : ''
                 },
-                body: JSON.stringify({ content, locale: window.CONFIG?.getLocale() || 'en-IN' })
+                body: JSON.stringify({ content, locale })
             });
 
             if (!response.ok) { this.showError('Failed to download document'); return; }
 
-            const blob = await response.blob();
-            const url  = window.URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href     = url;
-            a.download = `samarthaa-legal.${type === 'pdf' ? 'pdf' : 'docx'}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+            if (type === 'pdf') {
+                // PDF endpoint returns HTML — open in new tab, browser prints to PDF
+                const html = await response.text();
+                const blob = new Blob([html], { type: 'text/html' });
+                const url  = URL.createObjectURL(blob);
+                const tab  = window.open(url, '_blank');
+                if (!tab) {
+                    // Popup blocked — download as HTML fallback
+                    const a    = document.createElement('a');
+                    a.href     = url;
+                    a.download = `samarthaa-legal-${Date.now()}.html`;
+                    a.click();
+                }
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+            } else {
+                // Word — download blob as .docx
+                const blob = await response.blob();
+                const url  = window.URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href     = url;
+                a.download = `samarthaa-legal-${Date.now()}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }
+
+            if (btn) { btn.innerHTML = '✓'; setTimeout(() => { btn.innerHTML = origText; btn.disabled = false; }, 2000); }
 
         } catch (err) {
+            if (btn) { btn.innerHTML = origText; btn.disabled = false; }
             this.showError('Download failed: ' + err.message);
         }
     },
