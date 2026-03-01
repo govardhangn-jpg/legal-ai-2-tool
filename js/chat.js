@@ -669,79 +669,97 @@ const ChatAssistant = (() => {
 
     async function downloadChatPDF() {
         if (conversationHistory.length === 0) {
-            alert('No conversation to download yet.');
+            alert(isJapanese() ? '会話履歴がありません。' : 'No conversation to download yet.');
             return;
         }
 
-        const token = localStorage.getItem('token');
-        if (!token) { alert('Please log in first.'); return; }
-
-        // Build plain-text transcript
         const now    = new Date().toLocaleString(getLocale(), { dateStyle: 'long', timeStyle: 'short' });
         const mode   = documentContext
-            ? { contract: 'Contract Drafting', research: 'Case Research', opinion: 'Legal Opinion' }[documentContext.mode] || documentContext.mode
-            : 'General';
+            ? ({ contract: isJapanese() ? '契約書作成' : 'Contract Drafting',
+                 research: isJapanese() ? '判例調査'   : 'Case Research',
+                 opinion:  isJapanese() ? '法律意見書' : 'Legal Opinion' })[documentContext.mode] || documentContext.mode
+            : (isJapanese() ? '一般' : 'General');
 
-        const ja = isJapanese();
-        const header    = ja ? 'SAMARTHAA-LEGAL — チャット記録' : 'SAMARTHAA-LEGAL — CHAT TRANSCRIPT';
-        const modeLabel = ja ? 'モード' : 'Mode';
-        const dateLabel = ja ? '日時'   : 'Date';
-        const youLabel  = ja ? 'あなた' : 'YOU';
-        const aiLabel   = ja ? 'SAMARTHAA AI' : 'SAMARTHAA AI';
-        const divider   = '─'.repeat(60);
-        const disc      = ja
+        const ja       = isJapanese();
+        const fontUrl  = ja
+            ? 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap'
+            : 'https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;700&display=swap';
+        const fontFamily = ja ? "'Noto Sans JP', sans-serif" : "'Crimson Pro', serif";
+
+        // Build HTML rows from conversation history
+        const rows = conversationHistory.map(msg => {
+            const isUser   = msg.role === 'user';
+            const speaker  = isUser ? (ja ? 'あなた' : 'YOU') : 'SAMARTHAA AI';
+            const bg       = isUser ? '#f0ebe0' : '#ffffff';
+            const label    = isUser ? (ja ? 'ご質問' : 'Question') : (ja ? '回答' : 'Answer');
+            const escaped  = msg.content
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                .replace(/\n/g,'<br>');
+            return `
+            <div style="margin-bottom:20px;padding:14px 18px;background:${bg};border-radius:8px;border-left:4px solid ${isUser ? '#c9a84c' : '#2c6e49'};">
+                <div style="font-size:10px;font-weight:700;color:${isUser ? '#8b6914' : '#2c6e49'};text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">${speaker} — ${label}</div>
+                <div style="font-size:12px;line-height:1.7;color:#2a2a2a;">${escaped}</div>
+            </div>`;
+        }).join('');
+
+        const disclaimer = ja
             ? '免責事項：このAIが生成した会話は情報提供のみを目的としており、法的アドバイスを構成するものではありません。必ず資格を持つ法律の専門家にご相談ください。'
             : 'Disclaimer: This AI-generated conversation is for informational purposes only and does not constitute legal advice. Always consult a qualified legal professional.';
 
-        let content = `${header}\n`;
-        content    += `${modeLabel}: ${mode}\n`;
-        content    += `${dateLabel}: ${now}\n`;
-        content    += `${divider}\n\n`;
+        const html = `<!DOCTYPE html>
+<html lang="${ja ? 'ja' : 'en'}">
+<head>
+<meta charset="UTF-8">
+<title>SAMARTHAA-LEGAL ${ja ? 'チャット記録' : 'Chat Transcript'}</title>
+<link rel="stylesheet" href="${fontUrl}">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: ${fontFamily}; font-size: 12px; color: #1a1a1a; padding: 40px; background: #fff; }
+  .header { text-align: center; border-bottom: 2px solid #c9a84c; padding-bottom: 18px; margin-bottom: 24px; }
+  .header h1 { font-size: 20px; font-weight: 700; color: #2c1a0e; letter-spacing: 0.05em; }
+  .header .meta { font-size: 11px; color: #7a6a50; margin-top: 6px; }
+  .footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #d4c9a8; font-size: 9px; color: #999; text-align: center; font-style: italic; }
+  @media print {
+    body { padding: 20px; }
+    @page { margin: 15mm; size: A4; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>⚖️ SAMARTHAA-LEGAL</h1>
+  <div class="meta">
+    ${ja ? 'モード' : 'Mode'}: ${mode} &nbsp;|&nbsp; ${ja ? '日時' : 'Date'}: ${now}
+  </div>
+</div>
+${rows}
+<div class="footer">${disclaimer}</div>
+<script>
+  // Auto-trigger print dialog once fonts load
+  document.fonts.ready.then(() => {
+    setTimeout(() => { window.print(); }, 300);
+  });
+</script>
+</body>
+</html>`;
 
-        conversationHistory.forEach(msg => {
-            const speaker = msg.role === 'user' ? youLabel : aiLabel;
-            content += `${speaker}\n${msg.content}\n\n`;
-        });
-
-        content += `${divider}\n`;
-        content += disc;
-
-        // Use existing backend PDF endpoint
-        const baseUrl = (window.CONFIG?.API?.BACKEND_URL || 'https://legal-ai-2-tool-1.onrender.com/api/chat')
-            .replace('/api/chat', '');
+        // Open in new tab — browser renders with full Unicode support, user saves as PDF
+        const blob   = new Blob([html], { type: 'text/html' });
+        const url    = URL.createObjectURL(blob);
+        const tab    = window.open(url, '_blank');
+        if (!tab) {
+            // Popup blocked — fallback: download the HTML file
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `samarthaa-chat-${Date.now()}.html`;
+            a.click();
+        }
 
         const btn = document.getElementById('chatDownloadBtn');
-        const original = btn ? btn.innerHTML : '';
-        if (btn) { btn.innerHTML = '⏳'; btn.disabled = true; }
-
-        try {
-            const response = await fetch(`${baseUrl}/api/download/pdf`, {
-                method:  'POST',
-                headers: {
-                    'Content-Type':  'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ content, locale: window.CONFIG?.getLocale() || 'en-IN' })
-            });
-
-            if (!response.ok) throw new Error('Download failed');
-
-            const blob     = await response.blob();
-            const url      = window.URL.createObjectURL(blob);
-            const a        = document.createElement('a');
-            a.href         = url;
-            a.download     = `samarthaa-legal-chat-${Date.now()}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-
-            if (btn) { btn.innerHTML = '✓'; setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 2000); }
-
-        } catch (err) {
-            console.error('Chat PDF download error:', err);
-            alert('Failed to download PDF. Please try again.');
-            if (btn) { btn.innerHTML = original; btn.disabled = false; }
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '✓';
+            setTimeout(() => { btn.innerHTML = orig; }, 2000);
         }
     }
 
