@@ -353,14 +353,17 @@ const ChatAssistant = (() => {
         if (!token) return;
 
         const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
-
         const mySeq = ++_speakSeq;
-        stopSpeaking();
+
+        stopSpeaking(); // stop any current audio
+
         isSpeaking = true;
-        if (triggerBtn) triggerBtn.classList.add('speaking');
+        triggerBtn.classList.add('speaking');
 
         try {
             ttsAbortCtrl = new AbortController();
+
+            // Trim to 1500 chars for chat responses (keep it snappy)
             const trimmed = text.trim().substring(0, 1500);
 
             const response = await fetch(`${baseUrl}/api/tts`, {
@@ -373,51 +376,26 @@ const ChatAssistant = (() => {
                 signal: ttsAbortCtrl.signal
             });
 
-            if (!response.ok) throw new Error(`TTS ${response.status}`);
+            if (!response.ok) throw new Error('TTS failed');
 
             const arrayBuffer = await response.arrayBuffer();
             if (mySeq !== _speakSeq) return;
+            chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const decoded = await chatAudioCtx.decodeAudioData(arrayBuffer);
 
-            if (isAndroid) {
-                // ── Android: HTMLAudioElement ──────────────────────────────
-                // AudioContext.resume() is blocked after async fetch on Android Chrome.
-                // HTMLAudioElement plays reliably after MediaRecorder mic permission is granted.
-                const blob    = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-                const blobUrl = URL.createObjectURL(blob);
-                chatAudioEl   = new Audio(blobUrl);
-                chatAudioEl.volume = 1.0;
-                chatAudioEl.onended = () => {
-                    URL.revokeObjectURL(blobUrl);
-                    finishSpeaking();
-                    if (onFinish) onFinish();
-                };
-                chatAudioEl.onerror = () => {
-                    URL.revokeObjectURL(blobUrl);
-                    if (mySeq === _speakSeq) fallbackSpeak(text, onFinish);
-                };
-                chatAudioEl.play().catch(() => {
-                    if (mySeq === _speakSeq) fallbackSpeak(text, onFinish);
-                });
+            // GainNode for volume boost (1.0 = normal, 2.0 = double, 3.0 = triple)
+            const gainNode = chatAudioCtx.createGain();
+            gainNode.gain.value = 2.5;
+            gainNode.connect(chatAudioCtx.destination);
 
-            } else {
-                // ── iOS / Desktop: AudioContext ────────────────────────────
-                chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (chatAudioCtx.state === 'suspended') await chatAudioCtx.resume();
-
-                const decoded  = await chatAudioCtx.decodeAudioData(arrayBuffer);
-                const gainNode = chatAudioCtx.createGain();
-                gainNode.gain.value = 3.75;
-                gainNode.connect(chatAudioCtx.destination);
-
-                chatAudioSrc        = chatAudioCtx.createBufferSource();
-                chatAudioSrc.buffer = decoded;
-                chatAudioSrc.connect(gainNode);
-                chatAudioSrc.onended = () => {
-                    finishSpeaking();
-                    if (onFinish) onFinish();
-                };
-                chatAudioSrc.start(0);
-            }
+            chatAudioSrc        = chatAudioCtx.createBufferSource();
+            chatAudioSrc.buffer = decoded;
+            chatAudioSrc.connect(gainNode);
+            chatAudioSrc.onended = () => {
+                finishSpeaking();
+                if (onFinish) onFinish();
+            };
+            chatAudioSrc.start(0);
 
         } catch (err) {
             if (err.name === 'AbortError') return;
@@ -428,14 +406,6 @@ const ChatAssistant = (() => {
 
     function stopSpeaking() {
         ttsAbortCtrl && ttsAbortCtrl.abort();
-        // Android path
-        if (chatAudioEl) {
-            chatAudioEl.onended = null;
-            chatAudioEl.onerror = null;
-            try { chatAudioEl.pause(); chatAudioEl.src = ''; } catch {}
-            chatAudioEl = null;
-        }
-        // iOS/Desktop path
         if (chatAudioSrc) {
             try { chatAudioSrc.stop(); } catch {}
             chatAudioSrc = null;
@@ -456,52 +426,44 @@ const ChatAssistant = (() => {
 
     function fallbackSpeak(text, onFinish) {
         if (!window.speechSynthesis) { finishSpeaking(); return; }
-        window.speechSynthesis.cancel();
-        const u  = new SpeechSynthesisUtterance(text.substring(0, 500));
-        u.lang   = getLocale();
-        u.rate   = 0.9;
-        u.volume = 1.0;
-        u.onend  = () => { finishSpeaking(); if (onFinish) onFinish(); };
-        u.onerror = () => { finishSpeaking(); };
+        const u    = new SpeechSynthesisUtterance(text.substring(0, 500));
+        u.lang     = getLocale();
+        u.rate     = 0.9;
+        u.onend    = () => { finishSpeaking(); if (onFinish) onFinish(); };
+        u.onerror  = () => { finishSpeaking(); };
         isSpeaking = true;
         window.speechSynthesis.speak(u);
     }
 
-        // ══════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     //   SPEECH-TO-TEXT (mic → chatInput)
     // ══════════════════════════════════════════════════════════════
 
     function startRecording() {
         if (isRecording) { stopRecording(); return; }
 
-        // Android: always use MediaRecorder + Whisper (Web Speech is unreliable on Android)
-        if (isAndroid) {
+        // Use Web Speech API on ALL platforms — Android Chrome supports it in modern versions
+        // (MediaRecorder + server transcription was never reliably working)
+        if (hasSpeechRecognition) {
             navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => startMediaRecorder(stream))
+                .then(stream => {
+                    stream.getTracks().forEach(t => t.stop()); // Web Speech manages its own mic
+                    startWebSpeech();
+                })
                 .catch(err => {
                     console.error('Mic permission error:', err);
-                    showMicStatus(T('Mic blocked. Allow microphone in Chrome Site Settings.', 'マイクがブロックされています。Chromeのサイト設定でマイクを許可してください。'));
+                    showMicStatus(T('Mic blocked. Allow microphone in browser settings.', 'マイクがブロックされています。ブラウザの設定でマイクを許可してください。'));
                     setTimeout(() => showMicStatus(''), 5000);
                 });
             return;
         }
 
-        // Desktop/iOS: use Web Speech API
-        if (!hasSpeechRecognition) {
-            showMicStatus(T('Voice not supported. Please type your question.', '音声入力は対応していません。テキストで入力してください。'));
-            return;
-        }
-
-        // Request mic permission first
+        // Fallback for browsers without Web Speech API: MediaRecorder + server transcription
         navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                // Release the stream — Web Speech API manages its own mic
-                stream.getTracks().forEach(t => t.stop());
-                startWebSpeech();
-            })
+            .then(stream => startMediaRecorder(stream))
             .catch(err => {
                 console.error('Mic permission error:', err);
-                showMicStatus(T('Mic blocked. Go to Chrome Settings → Site Settings → Microphone → Allow this site.', 'マイクがブロックされています。Chrome設定 → サイト設定 → マイク → このサイトを許可してください。'));
+                showMicStatus(T('Voice not supported on this browser. Please type your question.', 'このブラウザでは音声入力できません。テキストで入力してください。'));
                 setTimeout(() => showMicStatus(''), 5000);
             });
     }
@@ -560,13 +522,9 @@ const ChatAssistant = (() => {
             ? 'audio/webm;codecs=opus'
             : MediaRecorder.isTypeSupported('audio/webm')
             ? 'audio/webm'
-            : MediaRecorder.isTypeSupported('audio/mp4')
-            ? 'audio/mp4'
-            : '';
+            : 'audio/mp4';
 
-        mediaRecorder = mimeType
-            ? new MediaRecorder(stream, { mimeType })
-            : new MediaRecorder(stream); // let browser pick format
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
 
         mediaRecorder.ondataavailable = e => {
             if (e.data && e.data.size > 0) audioChunks.push(e.data);
@@ -581,9 +539,7 @@ const ChatAssistant = (() => {
             setMicRecording(false, 'Transcribing…');
             stream.getTracks().forEach(t => t.stop());
 
-            // Use the actual mimeType the browser recorded with
-            const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
-            const audioBlob  = new Blob(audioChunks, { type: actualMime.split(';')[0] });
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
             await transcribeAudio(audioBlob);
 
             useMediaRecorder = false;
@@ -605,11 +561,7 @@ const ChatAssistant = (() => {
 
         try {
             const formData = new FormData();
-            const ext = audioBlob.type.includes('mp4') ? 'mp4'
-                       : audioBlob.type.includes('ogg') ? 'ogg'
-                       : audioBlob.type.includes('wav') ? 'wav'
-                       : 'webm';
-            formData.append('audio', audioBlob, `voice.${ext}`);
+            formData.append('audio', audioBlob, 'voice.webm');
 
             const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
             const response = await fetch(`${baseUrl}/api/transcribe`, {
@@ -627,13 +579,13 @@ const ChatAssistant = (() => {
                     setTimeout(() => sendMessage(), 100);
                 } else {
                     setMicRecording(false);
-                    chatInput.placeholder = 'Could not hear clearly. Try again.';
+                    chatInput.placeholder = T('Could not hear clearly. Try again.', 'うまく聞こえませんでした。もう一度お試しください。');
                     setTimeout(() => chatInput.placeholder = T('Ask about Indian law or your document…', '日本の法律やあなたの文書について質問してください…'), 3000);
                 }
             } else {
                 // Transcription failed — fallback: show input for manual typing
                 setMicRecording(false);
-                chatInput.placeholder = 'Voice failed — please type your question';
+                chatInput.placeholder = T('Voice failed — please type your question', '音声に失敗しました。テキストで入力してください');
                 setTimeout(() => chatInput.placeholder = T('Ask about Indian law or your document…', '日本の法律やあなたの文書について質問してください…'), 4000);
             }
         } catch (err) {
