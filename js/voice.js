@@ -13,6 +13,7 @@ const Voice = (() => {
     let activeTargetEl   = null;   // textarea/input being filled right now
 
     let audioContext     = null;
+    let audioElement     = null;   // HTMLAudioElement — mobile-safe
     let audioSource      = null;
     let isPlaying        = false;
     let ttsAbortCtrl     = null;   // AbortController for in-flight TTS fetch
@@ -44,7 +45,7 @@ const Voice = (() => {
     function buildRecognition(targetEl, statusEl, micBtn) {
         const SR   = window.SpeechRecognition || window.webkitSpeechRecognition;
         const rec  = new SR();
-        rec.lang           = 'en-IN';
+        rec.lang           = window.CONFIG?.getLocale() || 'en-IN';
         rec.continuous     = true;
         rec.interimResults = true;
 
@@ -160,7 +161,7 @@ const Voice = (() => {
         const token = localStorage.getItem('token');
         if (!token) { alert('Please log in first.'); return; }
 
-        const baseBackend = (window.CONFIG?.API?.BACKEND_URL || 'https://legal-ai-2-tool.onrender.com/api/chat');
+        const baseBackend = (window.CONFIG?.API?.BACKEND_URL || 'https://legal-ai-2-tool-1.onrender.com/api/chat');
         const ttsUrl = baseBackend.replace('/api/chat', '/api/tts');
 
         setReadAloudUI(true);
@@ -183,23 +184,27 @@ const Voice = (() => {
                 throw new Error(err.error || `TTS error ${response.status}`);
             }
 
-            // Decode the streamed audio/mpeg via Web Audio API
+            // Use HTMLAudioElement — works on mobile without user-gesture AudioContext restriction
             const arrayBuffer = await response.arrayBuffer();
 
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const decoded = await audioContext.decodeAudioData(arrayBuffer);
+            const blob    = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+            const blobUrl = URL.createObjectURL(blob);
 
-            // GainNode for volume boost (1.0 = normal, 2.0 = double, 3.0 = triple)
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = 2.5;
-            gainNode.connect(audioContext.destination);
+            audioElement = new Audio(blobUrl);
+            audioElement.volume = 1.0;
+            audioElement.onended = () => {
+                URL.revokeObjectURL(blobUrl);
+                finishSpeaking();
+            };
+            audioElement.onerror = () => {
+                URL.revokeObjectURL(blobUrl);
+                fallbackTTS(text);
+            };
 
-            audioSource          = audioContext.createBufferSource();
-            audioSource.buffer   = decoded;
-            audioSource.connect(gainNode);
-
-            audioSource.onended = () => finishSpeaking();
-            audioSource.start(0);
+            const playPromise = audioElement.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => fallbackTTS(text));
+            }
             isPlaying = true;
 
         } catch (err) {
@@ -212,6 +217,14 @@ const Voice = (() => {
 
     function stopSpeaking() {
         ttsAbortCtrl && ttsAbortCtrl.abort();
+        // Stop HTMLAudioElement (primary path)
+        if (audioElement) {
+            audioElement.onended = null;
+            audioElement.onerror = null;
+            try { audioElement.pause(); audioElement.src = ''; } catch {}
+            audioElement = null;
+        }
+        // Stop legacy AudioContext nodes if any exist
         if (audioSource) {
             try { audioSource.stop(); } catch {}
             audioSource = null;
@@ -244,7 +257,7 @@ const Voice = (() => {
         function next() {
             if (!isPlaying || idx >= chunks.length) { finishSpeaking(); return; }
             const u    = new SpeechSynthesisUtterance(chunks[idx]);
-            u.lang     = 'en-IN';
+            u.lang     = window.CONFIG?.getLocale() || 'en-IN';
             u.rate     = 0.9;
             u.onend    = () => { idx++; next(); };
             u.onerror  = () => finishSpeaking();
@@ -256,17 +269,17 @@ const Voice = (() => {
     }
 
     function setReadAloudUI(playing) {
-        // Update ALL read-aloud buttons (only one shows at a time per result)
         const btn  = document.getElementById('btnReadAloud');
         const ind  = document.getElementById('speakingIndicator');
+        const isJA = window.CONFIG?.getLocale() === 'ja-JP';
 
         if (!btn) return;
         if (playing) {
-            btn.textContent = '⏹ Stop Reading';
+            btn.textContent = isJA ? '⏹ 読み上げ停止' : '⏹ Stop Reading';
             btn.classList.add('stop-mode');
             if (ind) ind.style.display = 'block';
         } else {
-            btn.textContent = '🔊 Read Aloud';
+            btn.textContent = isJA ? '🔊 読み上げ' : '🔊 Read Aloud';
             btn.classList.remove('stop-mode');
             if (ind) ind.style.display = 'none';
         }
@@ -338,8 +351,6 @@ const Voice = (() => {
     }
 
     // ── Init ───────────────────────────────────────────────────────
-    let _initialized = false;
-
     function init() {
         // Wire mic buttons for all modes
         ['contract', 'research', 'opinion'].forEach(wireModeMicButtons);
@@ -350,23 +361,30 @@ const Voice = (() => {
             stopSpeaking();
         });
 
-        // Wire Read Aloud button if already visible
+        // Try wiring Read Aloud now (works if btn exists at DOMContentLoaded)
         _wireReadAloudBtn();
     }
 
-    // Called after login when mainApp is visible and btnReadAloud exists
+    // Called explicitly after login when mainApp becomes visible
+    // Ensures btnReadAloud is wired even if it was hidden during init()
     function reinit() {
         _wireReadAloudBtn();
     }
 
+    // Wire the Read Aloud button — idempotent via _readAloudBound flag
     function _wireReadAloudBtn() {
         const btn = document.getElementById('btnReadAloud');
-        if (!btn || btn._readAloudBound) return; // already bound — skip
+        if (!btn) { console.warn('btnReadAloud not found'); return; }
+        if (btn._readAloudBound) return; // already wired — skip
         btn._readAloudBound = true;
+
         btn.addEventListener('click', () => {
-            const content = document.getElementById('resultContent');
-            if (content) readAloud(content.textContent);
+            const resultEl = document.getElementById('resultContent');
+            const text = resultEl ? resultEl.textContent.trim() : '';
+            if (!text) return;
+            readAloud(text);
         });
+        console.log('✅ Read Aloud button wired');
     }
 
     return {

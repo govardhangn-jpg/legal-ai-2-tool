@@ -27,6 +27,7 @@ const ChatAssistant = (() => {
     let chatAudioSrc    = null;
     let isSpeaking      = false;
     let ttsAbortCtrl    = null;
+    let chatAudioEl     = null;   // HTMLAudioElement — mobile-safe playback
 
     // ── DOM refs ───────────────────────────────────────────────────
     let triggerBtn, panel, messagesEl, typingEl, chatInput,
@@ -169,7 +170,7 @@ const ChatAssistant = (() => {
             <div class="chat-empty-icon">⚖️</div>
             <h4>${T('SAMARTHAA Legal Assistant', 'SAMARTHAA 法律アシスタント')}</h4>
             <p id="chatWelcomeMsg">${T(
-                T('Ask me anything about Indian law, or questions about your generated document.', '日本の法律についてご質問いただくか、生成した文書についてお尋ねください。'),
+                'Ask me anything about Indian law, or questions about your generated document.',
                 '日本の法律についてご質問いただくか、生成した文書についてお尋ねください。'
             )}</p>
         `;
@@ -384,22 +385,30 @@ const ChatAssistant = (() => {
             // A newer speakText() was called while we were fetching — abandon this one
             if (mySeq !== _speakSeq) return;
 
-            chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const decoded = await chatAudioCtx.decodeAudioData(arrayBuffer);
+            // Use HTMLAudioElement — works on mobile without user-gesture AudioContext restriction
+            const blob    = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+            const blobUrl = URL.createObjectURL(blob);
 
-            // GainNode for volume boost (1.0 = normal, 2.0 = double, 3.0 = triple)
-            const gainNode = chatAudioCtx.createGain();
-            gainNode.gain.value = 3.75;
-            gainNode.connect(chatAudioCtx.destination);
-
-            chatAudioSrc        = chatAudioCtx.createBufferSource();
-            chatAudioSrc.buffer = decoded;
-            chatAudioSrc.connect(gainNode);
-            chatAudioSrc.onended = () => {
+            chatAudioEl = new Audio(blobUrl);
+            chatAudioEl.volume = 1.0;
+            chatAudioEl.onended = () => {
+                URL.revokeObjectURL(blobUrl);
                 finishSpeaking();
                 if (onFinish) onFinish();
             };
-            chatAudioSrc.start(0);
+            chatAudioEl.onerror = (e) => {
+                URL.revokeObjectURL(blobUrl);
+                if (mySeq !== _speakSeq) return;
+                fallbackSpeak(text, onFinish);
+            };
+
+            const playPromise = chatAudioEl.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(() => {
+                    // Autoplay blocked — fall back to browser TTS
+                    if (mySeq === _speakSeq) fallbackSpeak(text, onFinish);
+                });
+            }
 
         } catch (err) {
             if (err.name === 'AbortError') return;
@@ -412,6 +421,14 @@ const ChatAssistant = (() => {
 
     function stopSpeaking() {
         ttsAbortCtrl && ttsAbortCtrl.abort();
+        // Stop HTMLAudioElement (primary path)
+        if (chatAudioEl) {
+            chatAudioEl.onended = null;
+            chatAudioEl.onerror = null;
+            try { chatAudioEl.pause(); chatAudioEl.src = ''; } catch {}
+            chatAudioEl = null;
+        }
+        // Stop legacy AudioContext nodes if any still exist
         if (chatAudioSrc) {
             try { chatAudioSrc.stop(); } catch {}
             chatAudioSrc = null;
