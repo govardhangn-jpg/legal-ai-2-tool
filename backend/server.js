@@ -125,8 +125,10 @@ const upload       = multer({ storage: multer.memoryStorage(), limits: { fileSiz
 const PORT               = process.env.PORT             || 5000;
 const ANTHROPIC_API_KEY  = process.env.ANTHROPIC_API_KEY;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'; // default: "Sarah"
+const ELEVENLABS_VOICE_ID    = process.env.ELEVENLABS_VOICE_ID    || 'EXAVITQu4vr4xnSDxMaL';
+const INDIANKANOON_API_TOKEN = process.env.INDIANKANOON_API_TOKEN || '';
 console.log(`🎙️  ElevenLabs Voice ID: ${ELEVENLABS_VOICE_ID}`);
+console.log(`⚖️   Indian Kanoon: ${INDIANKANOON_API_TOKEN ? 'configured' : 'not configured (citations unverified)'}`);
 
 // 4️⃣ Validate keys
 if (!ANTHROPIC_API_KEY)  console.warn('⚠️  ANTHROPIC_API_KEY not set in .env');
@@ -583,10 +585,27 @@ FORMAT INSTRUCTIONS (MANDATORY)
         console.log('✅ Claude response generated');
         console.log('📊 Tokens used:', response.usage);
 
+        const outputText = response.content[0].text;
+
+        // Verify citations against Indian Kanoon
+        let verifiedSources = [];
+        if (INDIANKANOON_API_TOKEN) {
+            try {
+                const cits = extractCitations(outputText);
+                if (cits.length > 0) {
+                    console.log(`🔍 Verifying ${cits.length} citations...`);
+                    const results = await Promise.all(cits.slice(0, 3).map(c => searchIndianKanoon(c, 2)));
+                    verifiedSources = results.flat().filter(r => r.tid);
+                    console.log(`✅ ${verifiedSources.length} verified sources found`);
+                }
+            } catch(e) { console.warn('Citation check error:', e.message); }
+        }
+
         res.json({
             success: true,
             documentId: crypto.randomUUID(),
-            output: response.content[0].text,
+            output: outputText,
+            verifiedSources,
             usage: response.usage
         });
 
@@ -793,7 +812,7 @@ app.post('/api/download/word', requireAuth, async (req, res) => {
 
 
 // =====================================================
-//   Transcribe Audio  🔐 Protected  (Claude AI)
+//   Transcribe Audio  🔐 Protected  (OpenAI Whisper)
 //   POST /api/transcribe  multipart/form-data  field: audio
 // =====================================================
 app.post('/api/transcribe', requireAuth, upload.single('audio'), async (req, res) => {
@@ -801,52 +820,152 @@ app.post('/api/transcribe', requireAuth, upload.single('audio'), async (req, res
         return res.status(400).json({ text: '', error: 'No audio file received' });
     }
 
-    if (!ANTHROPIC_API_KEY) {
-        return res.status(503).json({ text: '', error: 'API key not configured' });
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+        console.error('\u274c OPENAI_API_KEY not set');
+        return res.status(503).json({ text: '', error: 'Transcription not configured — add OPENAI_API_KEY to Render env vars' });
     }
 
+    const rawMime  = (req.file.mimetype || 'audio/webm').split(';')[0].trim();
+    const ext      = rawMime.includes('mp4') ? 'mp4'
+                   : rawMime.includes('ogg') ? 'ogg'
+                   : rawMime.includes('wav') ? 'wav'
+                   : 'webm';
+    const filename = `voice.${ext}`;
+    console.log(`\u1f399\ufe0f  Transcribe: ${req.user.email} — ${req.file.size}B ${rawMime}`);
+
     try {
-        // Normalise mime type — Android sends audio/mp4, iOS/desktop send audio/webm
-        let mimeType = (req.file.mimetype || 'audio/webm').split(';')[0].trim();
+        const boundary   = `----WB${crypto.randomBytes(8).toString('hex')}`;
+        const CRLF       = '\r\n';
+        const partHead   = Buffer.from(
+            `--${boundary}${CRLF}` +
+            `Content-Disposition: form-data; name="file"; filename="${filename}"${CRLF}` +
+            `Content-Type: ${rawMime}${CRLF}${CRLF}`
+        );
+        const modelPart  = Buffer.from(`${CRLF}--${boundary}${CRLF}Content-Disposition: form-data; name="model"${CRLF}${CRLF}whisper-1`);
+        const promptPart = Buffer.from(`${CRLF}--${boundary}${CRLF}Content-Disposition: form-data; name="prompt"${CRLF}${CRLF}Indian legal terms, court names, acts, statutes, High Court, Supreme Court`);
+        const footer     = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
+        const body       = Buffer.concat([partHead, req.file.buffer, modelPart, promptPart, footer]);
 
-        // Claude supports: audio/webm, audio/mp4, audio/ogg, audio/wav, audio/flac, audio/mpeg
-        const supported = ['audio/webm','audio/mp4','audio/ogg','audio/wav','audio/flac','audio/mpeg','audio/mp3'];
-        if (!supported.includes(mimeType)) mimeType = 'audio/webm'; // safe default
-
-        const audioBase64 = req.file.buffer.toString('base64');
-        console.log(`🎙️  Transcribe: ${req.user.email} — ${req.file.size}B as ${mimeType}`);
-
-        const response = await anthropic.messages.create({
-            model:      'claude-opus-4-5',
-            max_tokens: 1024,
-            messages: [{
-                role: 'user',
-                content: [
-                    {
-                        type: 'document',
-                        source: {
-                            type:       'base64',
-                            media_type: mimeType,
-                            data:       audioBase64
-                        }
-                    },
-                    {
-                        type: 'text',
-                        text: 'Transcribe the speech in this audio. Return ONLY the spoken words, no commentary, no punctuation changes, no explanation. Preserve legal terminology, court names, acts and statutes exactly as spoken.'
-                    }
-                ]
-            }]
+        const text = await new Promise((resolve, reject) => {
+            const opts = {
+                hostname: 'api.openai.com',
+                path:     '/v1/audio/transcriptions',
+                method:   'POST',
+                headers:  {
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                    'Content-Type':  `multipart/form-data; boundary=${boundary}`,
+                    'Content-Length': body.length
+                }
+            };
+            const apiReq = https.request(opts, (apiRes) => {
+                let data = '';
+                apiRes.on('data', c => data += c);
+                apiRes.on('end', () => {
+                    try {
+                        const j = JSON.parse(data);
+                        if (apiRes.statusCode !== 200) reject(new Error(j.error?.message || `OpenAI ${apiRes.statusCode}`));
+                        else resolve(j.text || '');
+                    } catch(e) { reject(new Error('Invalid Whisper response')); }
+                });
+            });
+            apiReq.on('error', reject);
+            apiReq.write(body);
+            apiReq.end();
         });
 
-        const text = response.content[0]?.text?.trim() || '';
-        console.log(`✅ Transcribed: "${text.substring(0, 80)}"`);
+        console.log(`\u2705 Transcribed: "${text.substring(0, 80)}"`);
         res.json({ text });
 
     } catch (err) {
-        console.error('❌ Transcription error:', err.message);
+        console.error('\u274c Whisper error:', err.message);
         res.status(500).json({ text: '', error: 'Transcription failed: ' + err.message });
     }
 });
+
+// =====================================================
+//   Indian Kanoon — Citation Verification Helper
+// =====================================================
+
+/**
+ * Search Indian Kanoon for a legal query and return top results.
+ * Returns array of { title, citation, court, url, snippet }
+ */
+async function searchIndianKanoon(query, maxResults = 3) {
+    if (!INDIANKANOON_API_TOKEN) return [];
+
+    return new Promise((resolve) => {
+        const body = `formInput=${encodeURIComponent(query)}&pagenum=0`;
+
+        const options = {
+            hostname: 'api.indiankanoon.org',
+            path:     '/search/',
+            method:   'POST',
+            headers: {
+                'Authorization': `Token ${INDIANKANOON_API_TOKEN}`,
+                'Content-Type':  'application/x-www-form-urlencoded',
+                'Content-Length': Buffer.byteLength(body),
+                'Accept':        'application/json'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    const docs = (json.docs || []).slice(0, maxResults).map(doc => ({
+                        title:   doc.title   || '',
+                        tid:     doc.tid     || '',
+                        court:   doc.docsource || '',
+                        snippet: doc.headline ? doc.headline.replace(/<[^>]+>/g, '').substring(0, 200) : '',
+                        url:     `https://indiankanoon.org/doc/${doc.tid}/`
+                    }));
+                    resolve(docs);
+                } catch(e) {
+                    console.warn('Indian Kanoon parse error:', e.message);
+                    resolve([]);
+                }
+            });
+        });
+
+        req.on('error', (e) => {
+            console.warn('Indian Kanoon request error:', e.message);
+            resolve([]);
+        });
+
+        req.setTimeout(5000, () => { req.destroy(); resolve([]); });
+        req.write(body);
+        req.end();
+    });
+}
+
+/**
+ * Extract legal citations from Claude's response text.
+ * Looks for patterns like "X v. Y (YEAR)", "AIR YEAR SC/HC NNN", "MANU/SC/..."
+ */
+function extractCitations(text) {
+    const patterns = [
+        // Case name patterns: "X v. Y (2023)" or "X vs Y"
+        /([A-Z][\w\s&.()'-]{3,50}\s+(?:v\.?s?\.?|versus)\s+[A-Z][\w\s&.()'-]{3,50})/gi,
+        // AIR citations: AIR 2023 SC 1234
+        /AIR\s+\d{4}\s+(?:SC|HC|Bom|Del|Mad|Cal|All|Ker|Raj|MP|AP|Ori|P&H|Gau|J&K|Utt|Jhar|Chh)\s+\d+/gi,
+        // SCC citations: (2023) 5 SCC 123
+        /\(\d{4}\)\s+\d+\s+SCC\s+\d+/gi,
+        // MANU citations
+        /MANU\/\w+\/\d+\/\d+/gi,
+        // Writ/Civil/Criminal Appeal numbers
+        /(?:Writ Petition|Civil Appeal|Criminal Appeal|SLP)\s+(?:No\.)?\s*\d+\/\d{4}/gi
+    ];
+
+    const found = new Set();
+    patterns.forEach(pat => {
+        const matches = text.match(pat) || [];
+        matches.forEach(m => found.add(m.trim()));
+    });
+    return [...found].slice(0, 5); // max 5 citations to verify
+}
 
 // =====================================================
 //   Chat Assistant Endpoint  🔐 Protected
@@ -893,8 +1012,8 @@ app.post('/api/chat-assistant', requireAuth, async (req, res) => {
 Your communication style:
 - Respond in clear, plain English that non-lawyers can understand
 - Keep responses concise (3-5 sentences for simple questions, more for complex ones)
-- Always cite the relevant Indian law, section, or case when applicable
-- When uncertain, say so clearly rather than guessing
+- Cite relevant Indian laws and sections accurately. For case citations, only cite cases you are highly confident about — include party names, year, and court. If unsure of exact citation details, describe the legal principle and say "verify on Indian Kanoon" rather than guessing
+- When uncertain about a specific case citation, say so clearly rather than inventing one
 - End complex answers with a practical next-step recommendation
 - Never provide advice that requires knowing specific confidential facts — suggest consulting a lawyer
 
@@ -944,10 +1063,33 @@ When answering questions about this document, reference specific clauses or sect
             messages:   validHistory
         });
 
-        const reply = response.content[0].text;
+        let reply = response.content[0].text;
         console.log(`✅ Chat assistant replied (${reply.length} chars)`);
 
-        res.json({ reply, usage: response.usage });
+        // ── Verify citations against Indian Kanoon ─────────────────
+        let verifiedSources = [];
+        if (INDIANKANOON_API_TOKEN && !isJapaneseChat) {
+            try {
+                const citations = extractCitations(reply);
+                if (citations.length > 0) {
+                    console.log(`🔍 Verifying ${citations.length} citations on Indian Kanoon...`);
+                    // Search top 2 citations to keep response fast
+                    const searchPromises = citations.slice(0, 2).map(c => searchIndianKanoon(c, 2));
+                    const results = await Promise.all(searchPromises);
+                    verifiedSources = results.flat().filter(r => r.tid);
+                    console.log(`✅ Found ${verifiedSources.length} verified sources`);
+                } else {
+                    // No specific citations found — search the general topic
+                    const topicQuery = message.trim().substring(0, 100);
+                    verifiedSources = await searchIndianKanoon(topicQuery, 3);
+                    console.log(`✅ Topic search found ${verifiedSources.length} sources`);
+                }
+            } catch(e) {
+                console.warn('Citation verification error:', e.message);
+            }
+        }
+
+        res.json({ reply, verifiedSources, usage: response.usage });
 
     } catch (error) {
         console.error('❌ Chat assistant error:', error);

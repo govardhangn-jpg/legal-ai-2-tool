@@ -192,7 +192,7 @@ const ChatAssistant = (() => {
         messagesEl.appendChild(sugDiv);
     }
 
-    function addMessage(role, text) {
+    function addMessage(role, text, verifiedSources = []) {
         // Remove empty state if present
         const emptyState = messagesEl.querySelector('.chat-empty');
         if (emptyState) emptyState.remove();
@@ -237,6 +237,19 @@ const ChatAssistant = (() => {
                 }
             });
             bubble.appendChild(speakBtn);
+
+            // Verified sources panel
+            if (verifiedSources && verifiedSources.length > 0) {
+                const srcPanel = document.createElement('div');
+                srcPanel.className = 'chat-verified-sources';
+                srcPanel.innerHTML = `<div class="cvs-label">⚖️ Verified on Indian Kanoon</div>` +
+                    verifiedSources.map(s => `
+                        <a class="cvs-item" href="${s.url}" target="_blank" rel="noopener">
+                            <span class="cvs-title">${s.title}</span>
+                            <span class="cvs-court">${s.court}</span>
+                        </a>`).join('');
+                bubble.appendChild(srcPanel);
+            }
         }
 
         msgDiv.appendChild(avatar);
@@ -320,7 +333,7 @@ const ChatAssistant = (() => {
             const aiReply = data.reply;
 
             hideTyping();
-            addMessage('ai', aiReply);
+            addMessage('ai', aiReply, data.verifiedSources || []);
             conversationHistory.push({ role: 'assistant', content: aiReply });
 
             // Auto-speak AI reply
