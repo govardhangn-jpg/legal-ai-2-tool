@@ -21,6 +21,41 @@ const cors         = require('cors');
 const Anthropic    = require('@anthropic-ai/sdk');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = require('docx');
 const PDFDocument  = require('pdfkit');
+const https        = require('https');
+const os           = require('os');
+const path         = require('path');
+const fs           = require('fs');
+
+// ── Download NotoSansCJK font for Japanese PDF support ────────────
+// Font is cached to /tmp so it persists across requests on Render
+const NOTO_FONT_PATH = path.join(os.tmpdir(), 'NotoSansCJK.ttf');
+const NOTO_FONT_URL  = 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/SubsetOTF/JP/NotoSansCJKjp-Regular.otf';
+
+function ensureJapaneseFont() {
+    return new Promise((resolve) => {
+        if (fs.existsSync(NOTO_FONT_PATH)) {
+            console.log('✅ Japanese font already cached');
+            return resolve(true);
+        }
+        console.log('⬇️  Downloading Japanese font for PDF support...');
+        const file = fs.createWriteStream(NOTO_FONT_PATH);
+        https.get(NOTO_FONT_URL, (res) => {
+            res.pipe(file);
+            file.on('finish', () => {
+                file.close();
+                console.log('✅ Japanese font downloaded');
+                resolve(true);
+            });
+        }).on('error', (err) => {
+            console.warn('⚠️  Japanese font download failed:', err.message);
+            try { fs.unlinkSync(NOTO_FONT_PATH); } catch {}
+            resolve(false);
+        });
+    });
+}
+
+// Start font download in background at server startup
+ensureJapaneseFont();
 const crypto       = require('crypto');
 const https        = require('https');
 const multer       = require('multer');
@@ -505,30 +540,68 @@ FORMAT INSTRUCTIONS (MANDATORY)
 // =====================================================
 //   PDF Download  🔐 Protected
 // =====================================================
-app.post('/api/download/pdf', requireAuth, (req, res) => {
-    const { content } = req.body;
+app.post('/api/download/pdf', requireAuth, async (req, res) => {
+    const { content, locale } = req.body;
     if (!content) return res.status(400).send('No content provided');
+
+    const isJapanese = locale === 'ja-JP' ||
+        /[\u3000-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(content);
+
+    // For Japanese: ensure font is available
+    let jaFontAvailable = false;
+    if (isJapanese) {
+        await ensureJapaneseFont();
+        jaFontAvailable = fs.existsSync(NOTO_FONT_PATH);
+        if (!jaFontAvailable) {
+            console.warn('⚠️  Japanese font unavailable — PDF may show junk chars');
+        }
+    }
 
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=legal-document.pdf');
     doc.pipe(res);
 
+    // Register and set font
+    const setFont = (style) => {
+        if (isJapanese && jaFontAvailable) {
+            // NotoSansCJK covers all Japanese + latin chars
+            doc.font(NOTO_FONT_PATH);
+        } else {
+            doc.font(style === 'bold' ? 'Helvetica-Bold' : 'Helvetica');
+        }
+    };
+
     const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
 
-    doc.fontSize(16).font('Helvetica-Bold').text(lines[0], { align: 'center' });
+    // Title
+    setFont('bold');
+    doc.fontSize(16).text(lines[0], { align: 'center' });
     doc.moveDown(2);
 
+    // Body lines
     lines.slice(1).forEach(line => {
-        if (/^\d+(\.\d+)*\./.test(line)) {
-            doc.moveDown(0.5).fontSize(11).font('Helvetica-Bold').text(line, { align: 'left' });
+        // Detect heading: starts with number like "1." "1.1" or Japanese "第1条"
+        const isHeading = /^(\d+(\.\d+)*\.|第\d+条)/.test(line);
+        if (isHeading) {
+            setFont('bold');
+            doc.moveDown(0.5).fontSize(isJapanese ? 10 : 11).text(line, { align: 'left' });
         } else {
-            doc.moveDown(0.3).fontSize(11).font('Helvetica').text(line, { align: 'justify', lineGap: 4 });
+            setFont('normal');
+            doc.moveDown(0.3).fontSize(isJapanese ? 10 : 11).text(line, {
+                align: isJapanese ? 'left' : 'justify',
+                lineGap: 4
+            });
         }
     });
 
-    doc.moveDown(2).fontSize(8).font('Helvetica')
-        .text('Disclaimer: This document is AI-generated and must be reviewed by a qualified legal professional.', { align: 'center' });
+    // Footer disclaimer
+    const disclaimer = isJapanese
+        ? '免責事項：このAI生成文書は、資格を持つ法律の専門家が確認する必要があります。'
+        : 'Disclaimer: This document is AI-generated and must be reviewed by a qualified legal professional.';
+
+    setFont('normal');
+    doc.moveDown(2).fontSize(8).text(disclaimer, { align: 'center' });
 
     doc.end();
 });

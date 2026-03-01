@@ -689,7 +689,7 @@ const ChatAssistant = (() => {
                     'Content-Type':  'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ content })
+                body: JSON.stringify({ content, locale: window.CONFIG?.getLocale() || 'en-IN' })
             });
 
             if (!response.ok) throw new Error('Download failed');
