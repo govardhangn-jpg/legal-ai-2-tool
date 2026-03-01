@@ -26,9 +26,6 @@ const ChatAssistant = (() => {
     let chatAudioCtx    = null;
     let chatAudioSrc    = null;
     let isSpeaking      = false;
-    let _sentByVoice    = false;  // true when message was sent via mic tap
-    let _audioUnlocked  = false;  // whether audio has been unlocked by a user gesture
-    let _pendingSpeak   = null;   // text waiting to be spoken once audio unlocked
     let ttsAbortCtrl    = null;
     let chatAudioEl     = null;   // HTMLAudioElement — mobile-safe playback
 
@@ -326,20 +323,8 @@ const ChatAssistant = (() => {
             addMessage('ai', aiReply);
             conversationHistory.push({ role: 'assistant', content: aiReply });
 
-            // Auto-speak if message was sent by voice
-            if (_sentByVoice) {
-                _sentByVoice = false;
-                if (_audioUnlocked) {
-                    // Audio unlocked — speak directly
-                    speakText(aiReply);
-                } else {
-                    // Audio not yet unlocked — queue it, will play on next user tap
-                    _pendingSpeak = { text: aiReply, onFinish: null };
-                    // Still try via speak button click as fallback
-                    const latestSpeakBtn = messagesEl.querySelector('.chat-msg.ai:last-child .chat-msg-speak');
-                    if (latestSpeakBtn) latestSpeakBtn.click();
-                }
-            }
+            // Auto-speak AI reply
+            speakText(aiReply);
 
         } catch (err) {
             hideTyping();
@@ -375,7 +360,7 @@ const ChatAssistant = (() => {
         stopSpeaking(); // stop any current audio
 
         isSpeaking = true;
-        triggerBtn.classList.add('speaking');
+        if (triggerBtn) triggerBtn.classList.add('speaking');
 
         try {
             ttsAbortCtrl = new AbortController();
@@ -400,34 +385,30 @@ const ChatAssistant = (() => {
             // A newer speakText() was called while we were fetching — abandon this one
             if (mySeq !== _speakSeq) return;
 
-            // Use HTMLAudioElement — works on mobile without user-gesture AudioContext restriction
-            const blob    = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-            const blobUrl = URL.createObjectURL(blob);
+            chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-            chatAudioEl = new Audio(blobUrl);
-            chatAudioEl.volume = 1.0;
-            chatAudioEl.onended = () => {
-                URL.revokeObjectURL(blobUrl);
+            // Resume if suspended (required on some mobile browsers)
+            if (chatAudioCtx.state === 'suspended') {
+                await chatAudioCtx.resume();
+            }
+
+            const decoded = await chatAudioCtx.decodeAudioData(arrayBuffer);
+
+            const gainNode = chatAudioCtx.createGain();
+            gainNode.gain.value = 3.75;
+            gainNode.connect(chatAudioCtx.destination);
+
+            chatAudioSrc        = chatAudioCtx.createBufferSource();
+            chatAudioSrc.buffer = decoded;
+            chatAudioSrc.connect(gainNode);
+            chatAudioSrc.onended = () => {
                 finishSpeaking();
                 if (onFinish) onFinish();
             };
-            chatAudioEl.onerror = (e) => {
-                URL.revokeObjectURL(blobUrl);
-                if (mySeq !== _speakSeq) return;
-                fallbackSpeak(text, onFinish);
-            };
-
-            const playPromise = chatAudioEl.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(() => {
-                    // Autoplay blocked — fall back to browser TTS
-                    if (mySeq === _speakSeq) fallbackSpeak(text, onFinish);
-                });
-            }
+            chatAudioSrc.start(0);
 
         } catch (err) {
             if (err.name === 'AbortError') return;
-            // Only fallback if still the latest request
             if (mySeq !== _speakSeq) return;
             // Fallback to browser TTS
             fallbackSpeak(text, onFinish);
@@ -436,14 +417,6 @@ const ChatAssistant = (() => {
 
     function stopSpeaking() {
         ttsAbortCtrl && ttsAbortCtrl.abort();
-        // Stop HTMLAudioElement (primary path)
-        if (chatAudioEl) {
-            chatAudioEl.onended = null;
-            chatAudioEl.onerror = null;
-            try { chatAudioEl.pause(); chatAudioEl.src = ''; } catch {}
-            chatAudioEl = null;
-        }
-        // Stop legacy AudioContext nodes if any still exist
         if (chatAudioSrc) {
             try { chatAudioSrc.stop(); } catch {}
             chatAudioSrc = null;
@@ -451,6 +424,11 @@ const ChatAssistant = (() => {
         if (chatAudioCtx) {
             try { chatAudioCtx.close(); } catch {}
             chatAudioCtx = null;
+        }
+        // Also stop HTMLAudioElement if present
+        if (chatAudioEl) {
+            try { chatAudioEl.pause(); chatAudioEl.src = ''; } catch {}
+            chatAudioEl = null;
         }
         window.speechSynthesis && window.speechSynthesis.cancel();
         finishSpeaking();
@@ -464,16 +442,18 @@ const ChatAssistant = (() => {
 
     function fallbackSpeak(text, onFinish) {
         if (!window.speechSynthesis) { finishSpeaking(); return; }
-        const u    = new SpeechSynthesisUtterance(text.substring(0, 500));
-        u.lang     = getLocale();
-        u.rate     = 0.9;
-        u.onend    = () => { finishSpeaking(); if (onFinish) onFinish(); };
-        u.onerror  = () => { finishSpeaking(); };
+        window.speechSynthesis.cancel();
+        const u  = new SpeechSynthesisUtterance(text.substring(0, 500));
+        u.lang   = getLocale();
+        u.rate   = 0.9;
+        u.volume = 1.0;
+        u.onend  = () => { finishSpeaking(); if (onFinish) onFinish(); };
+        u.onerror = () => { finishSpeaking(); };
         isSpeaking = true;
         window.speechSynthesis.speak(u);
     }
 
-    // ══════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════
     //   SPEECH-TO-TEXT (mic → chatInput)
     // ══════════════════════════════════════════════════════════════
 
@@ -548,7 +528,7 @@ const ChatAssistant = (() => {
             isRecording = false;
             recognition = null;
             setTimeout(() => {
-                if (chatInput.value.trim()) { _sentByVoice = true; sendMessage(); }
+                if (chatInput.value.trim()) sendMessage();
             }, 200);
         };
 
@@ -620,7 +600,7 @@ const ChatAssistant = (() => {
                     chatInput.value = data.text.trim();
                     autoResizeInput();
                     setMicRecording(false);
-                    setTimeout(() => { _sentByVoice = true; sendMessage(); }, 100);
+                    setTimeout(() => sendMessage(), 100);
                 } else {
                     setMicRecording(false);
                     chatInput.placeholder = 'Could not hear clearly. Try again.';
@@ -831,7 +811,7 @@ ${rows}
         triggerBtn.addEventListener('click', toggle);
 
         // Send button
-        sendBtn.addEventListener('click', () => { unlockAudio(); sendMessage(); });
+        sendBtn.addEventListener('click', sendMessage);
 
         // Enter to send (Shift+Enter for newline)
         chatInput.addEventListener('keydown', (e) => {
@@ -844,31 +824,13 @@ ${rows}
         // Auto-resize textarea
         chatInput.addEventListener('input', autoResizeInput);
 
-    // ── Audio unlock (mobile requires gesture before audio.play()) ────────────
-    function unlockAudio() {
-        if (_audioUnlocked) return;
-        _audioUnlocked = true;
-        try {
-            const silent = new Audio("data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEtpdCAtIG11c2ljIGZvciBldmVyeW9uZSEhAAA=");
-            silent.volume = 0.001;
-            silent.play().catch(() => {});
-        } catch(e) {}
-        if (_pendingSpeak) {
-            const { text, onFinish } = _pendingSpeak;
-            _pendingSpeak = null;
-            setTimeout(() => speakText(text, onFinish), 50);
-        }
-    }
-
         // Mic button — also unlocks audio on tap
         micBtn.addEventListener('click', () => {
-            unlockAudio();
             stopSpeaking();
             startRecording();
         });
 
         // Unlock audio on chatInput focus (mobile keyboard tap = user interaction)
-        chatInput.addEventListener('focus', unlockAudio);
 
         // Clear context
         contextClear.addEventListener('click', clearContext);
