@@ -44,6 +44,9 @@ const ChatAssistant = (() => {
     }
     function isJapanese() { return getLocale() === 'ja-JP'; }
 
+    // ── UI string helper ──────────────────────────────────────────
+    function T(en, ja) { return isJapanese() ? ja : en; }
+
     // ── Suggested questions per mode ──────────────────────────────
     const SUGGESTIONS_EN = {
         contract: [
@@ -63,6 +66,12 @@ const ChatAssistant = (() => {
             'What documents do I need to proceed?',
             'Explain this opinion in simple language',
             'What are the next legal steps I should take?'
+        ],
+        default: [
+            'What are the key legal points to know?',
+            'Explain this legal concept simply',
+            'What are my rights in this situation?',
+            'What are the next steps I should take?'
         ]
     };
     const SUGGESTIONS_JA = {
@@ -83,6 +92,12 @@ const ChatAssistant = (() => {
             '手続きを進めるために必要な書類は何ですか？',
             'この意見書をわかりやすく説明してください',
             '次にどのような法的手続きを取るべきですか？'
+        ],
+        default: [
+            '知っておくべき重要な法的ポイントは何ですか？',
+            'この法的概念をわかりやすく説明してください',
+            'この状況における私の権利は何ですか？',
+            '次にどのような手順を踏むべきですか？'
         ]
     };
     const SUGGESTIONS = isJapanese() ? SUGGESTIONS_JA : SUGGESTIONS_EN;
@@ -152,8 +167,11 @@ const ChatAssistant = (() => {
         emptyDiv.className = 'chat-empty';
         emptyDiv.innerHTML = `
             <div class="chat-empty-icon">⚖️</div>
-            <h4>SAMARTHAA Legal Assistant</h4>
-            <p>Ask me anything about Indian law, or questions about your generated document.</p>
+            <h4>${T('SAMARTHAA Legal Assistant', 'SAMARTHAA 法律アシスタント')}</h4>
+            <p id="chatWelcomeMsg">${T(
+                T('Ask me anything about Indian law, or questions about your generated document.', '日本の法律についてご質問いただくか、生成した文書についてお尋ねください。'),
+                '日本の法律についてご質問いただくか、生成した文書についてお尋ねください。'
+            )}</p>
         `;
         messagesEl.appendChild(emptyDiv);
 
@@ -286,7 +304,7 @@ const ChatAssistant = (() => {
             if (response.status === 401 || response.status === 403) {
                 // Token expired — try to refresh silently, don't reload page
                 hideTyping();
-                addMessage('ai', 'Your session has expired. Please log out and log in again to continue.');
+                addMessage('ai', T('Your session has expired. Please log out and log in again to continue.', 'セッションが期限切れです。ログアウトして再度ログインしてください。'));
                 isThinking = false;
                 sendBtn.disabled = false;
                 return;
@@ -310,7 +328,7 @@ const ChatAssistant = (() => {
         } catch (err) {
             hideTyping();
             if (err.name !== 'AbortError') {
-                addMessage('ai', `Sorry, I encountered an error: ${err.message}. Please try again.`);
+                addMessage('ai', T(`Sorry, I encountered an error: ${err.message}. Please try again.`, `エラーが発生しました：${err.message}。もう一度お試しください。`));
             }
         } finally {
             isThinking   = false;
@@ -436,7 +454,7 @@ const ChatAssistant = (() => {
                 .then(stream => startMediaRecorder(stream))
                 .catch(err => {
                     console.error('Mic permission error:', err);
-                    showMicStatus('Mic blocked. Allow microphone in Chrome Site Settings.');
+                    showMicStatus(T('Mic blocked. Allow microphone in Chrome Site Settings.', 'マイクがブロックされています。Chromeのサイト設定でマイクを許可してください。'));
                     setTimeout(() => showMicStatus(''), 5000);
                 });
             return;
@@ -444,7 +462,7 @@ const ChatAssistant = (() => {
 
         // Desktop/iOS: use Web Speech API
         if (!hasSpeechRecognition) {
-            showMicStatus('Voice not supported. Please type your question.');
+            showMicStatus(T('Voice not supported. Please type your question.', '音声入力は対応していません。テキストで入力してください。'));
             return;
         }
 
@@ -457,7 +475,7 @@ const ChatAssistant = (() => {
             })
             .catch(err => {
                 console.error('Mic permission error:', err);
-                showMicStatus('Mic blocked. Go to Chrome Settings → Site Settings → Microphone → Allow this site.');
+                showMicStatus(T('Mic blocked. Go to Chrome Settings → Site Settings → Microphone → Allow this site.', 'マイクがブロックされています。Chrome設定 → サイト設定 → マイク → このサイトを許可してください。'));
                 setTimeout(() => showMicStatus(''), 5000);
             });
     }
@@ -574,13 +592,13 @@ const ChatAssistant = (() => {
                 } else {
                     setMicRecording(false);
                     chatInput.placeholder = 'Could not hear clearly. Try again.';
-                    setTimeout(() => chatInput.placeholder = 'Ask about Indian law or your document…', 3000);
+                    setTimeout(() => chatInput.placeholder = T('Ask about Indian law or your document…', '日本の法律やあなたの文書について質問してください…'), 3000);
                 }
             } else {
                 // Transcription failed — fallback: show input for manual typing
                 setMicRecording(false);
                 chatInput.placeholder = 'Voice failed — please type your question';
-                setTimeout(() => chatInput.placeholder = 'Ask about Indian law or your document…', 4000);
+                setTimeout(() => chatInput.placeholder = T('Ask about Indian law or your document…', '日本の法律やあなたの文書について質問してください…'), 4000);
             }
         } catch (err) {
             console.error('Transcription error:', err);
@@ -612,12 +630,12 @@ const ChatAssistant = (() => {
             micBtn.classList.remove('recording');
             micBtn.innerHTML = '🎤';
             micBtn.title = 'Speak your question';
-            chatInput.placeholder = 'Ask about Indian law or your document…';
+            chatInput.placeholder = T('Ask about Indian law or your document…', '日本の法律やあなたの文書について質問してください…');
         }
     }
 
     function showMicStatus(msg) {
-        chatInput.placeholder = msg || 'Ask about Indian law or your document…';
+        chatInput.placeholder = msg || T('Ask about Indian law or your document…', '日本の法律やあなたの文書について質問してください…');
     }
 
     // ══════════════════════════════════════════════════════════════
