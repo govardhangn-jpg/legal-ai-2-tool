@@ -21,42 +21,98 @@ const cors         = require('cors');
 const Anthropic    = require('@anthropic-ai/sdk');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = require('docx');
 const PDFDocument  = require('pdfkit');
-
-// ── Download NotoSansCJK font for Japanese PDF support ────────────
-// Font is cached to /tmp so it persists across requests on Render
-const NOTO_FONT_PATH = path.join(os.tmpdir(), 'NotoSansCJK.ttf');
-const NOTO_FONT_URL  = 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/SubsetOTF/JP/NotoSansCJKjp-Regular.otf';
-
-function ensureJapaneseFont() {
-    return new Promise((resolve) => {
-        if (fs.existsSync(NOTO_FONT_PATH)) {
-            console.log('✅ Japanese font already cached');
-            return resolve(true);
-        }
-        console.log('⬇️  Downloading Japanese font for PDF support...');
-        const file = fs.createWriteStream(NOTO_FONT_PATH);
-        https.get(NOTO_FONT_URL, (res) => {
-            res.pipe(file);
-            file.on('finish', () => {
-                file.close();
-                console.log('✅ Japanese font downloaded');
-                resolve(true);
-            });
-        }).on('error', (err) => {
-            console.warn('⚠️  Japanese font download failed:', err.message);
-            try { fs.unlinkSync(NOTO_FONT_PATH); } catch {}
-            resolve(false);
-        });
-    });
-}
-
-// Start font download in background at server startup
-ensureJapaneseFont();
 const crypto       = require('crypto');
 const https        = require('https');
 const os           = require('os');
 const path         = require('path');
 const fs           = require('fs');
+
+// ══════════════════════════════════════════════════════════════════
+//   MULTI-SCRIPT FONT SYSTEM
+//   Noto fonts cover all Indian scripts + Japanese/CJK
+//   All fonts are downloaded once at startup and cached in /tmp
+// ══════════════════════════════════════════════════════════════════
+
+const FONTS = {
+    // Japanese / CJK
+    japanese:  { path: path.join(os.tmpdir(), 'NotoSansCJK.otf'),      url: 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/SubsetOTF/JP/NotoSansCJKjp-Regular.otf' },
+    // Indian scripts
+    devanagari:{ path: path.join(os.tmpdir(), 'NotoSansDevanagari.ttf'),url: 'https://github.com/notofonts/devanagari/raw/main/fonts/NotoSansDevanagari/unhinted/ttf/NotoSansDevanagari-Regular.ttf' },
+    kannada:   { path: path.join(os.tmpdir(), 'NotoSansKannada.ttf'),   url: 'https://github.com/notofonts/kannada/raw/main/fonts/NotoSansKannada/unhinted/ttf/NotoSansKannada-Regular.ttf' },
+    tamil:     { path: path.join(os.tmpdir(), 'NotoSansTamil.ttf'),     url: 'https://github.com/notofonts/tamil/raw/main/fonts/NotoSansTamil/unhinted/ttf/NotoSansTamil-Regular.ttf' },
+    telugu:    { path: path.join(os.tmpdir(), 'NotoSansTelugu.ttf'),    url: 'https://github.com/notofonts/telugu/raw/main/fonts/NotoSansTelugu/unhinted/ttf/NotoSansTelugu-Regular.ttf' },
+    malayalam: { path: path.join(os.tmpdir(), 'NotoSansMalayalam.ttf'), url: 'https://github.com/notofonts/malayalam/raw/main/fonts/NotoSansMalayalam/unhinted/ttf/NotoSansMalayalam-Regular.ttf' },
+    bengali:   { path: path.join(os.tmpdir(), 'NotoSansBengali.ttf'),   url: 'https://github.com/notofonts/bengali/raw/main/fonts/NotoSansBengali/unhinted/ttf/NotoSansBengali-Regular.ttf' },
+    gujarati:  { path: path.join(os.tmpdir(), 'NotoSansGujarati.ttf'),  url: 'https://github.com/notofonts/gujarati/raw/main/fonts/NotoSansGujarati/unhinted/ttf/NotoSansGujarati-Regular.ttf' },
+    gurmukhi:  { path: path.join(os.tmpdir(), 'NotoSansGurmukhi.ttf'),  url: 'https://github.com/notofonts/gurmukhi/raw/main/fonts/NotoSansGurmukhi/unhinted/ttf/NotoSansGurmukhi-Regular.ttf' },
+};
+
+// Unicode ranges for script detection
+const SCRIPT_RANGES = [
+    { name: 'japanese',   regex: /[　-鿿豈-﫿＀-￯]/ },
+    { name: 'devanagari', regex: /[ऀ-ॿ]/ },   // Hindi, Marathi, Sanskrit
+    { name: 'kannada',    regex: /[ಀ-೿]/ },
+    { name: 'tamil',      regex: /[஀-௿]/ },
+    { name: 'telugu',     regex: /[ఀ-౿]/ },
+    { name: 'malayalam',  regex: /[ഀ-ൿ]/ },
+    { name: 'bengali',    regex: /[ঀ-৿]/ },
+    { name: 'gujarati',   regex: /[઀-૿]/ },
+    { name: 'gurmukhi',   regex: /[਀-੿]/ },   // Punjabi
+];
+
+// Detect which script a text contains (returns font key or null for Latin/English)
+function detectScript(text) {
+    for (const { name, regex } of SCRIPT_RANGES) {
+        if (regex.test(text)) return name;
+    }
+    return null; // Latin / English — use Helvetica
+}
+
+// Download a single font file
+function downloadFont(key) {
+    const font = FONTS[key];
+    return new Promise((resolve) => {
+        if (fs.existsSync(font.path)) return resolve(true);
+        console.log(`⬇️  Downloading \${key} font...`);
+        const file = fs.createWriteStream(font.path);
+        https.get(font.url, (res) => {
+            if (res.statusCode !== 200) {
+                file.close();
+                console.warn(`⚠️  \${key} font download failed: HTTP \${res.statusCode}`);
+                return resolve(false);
+            }
+            res.pipe(file);
+            file.on('finish', () => { file.close(); console.log(`✅ \${key} font ready`); resolve(true); });
+        }).on('error', (err) => {
+            console.warn(`⚠️  \${key} font error: \${err.message}`);
+            try { fs.unlinkSync(font.path); } catch {}
+            resolve(false);
+        });
+    });
+}
+
+// Ensure a specific font is available (downloads if needed)
+async function ensureFont(key) {
+    if (!FONTS[key]) return false;
+    if (fs.existsSync(FONTS[key].path)) return true;
+    return downloadFont(key);
+}
+
+// Get the font path to use for given text content
+async function getFontPath(text) {
+    const script = detectScript(text);
+    if (!script) return null; // use Helvetica
+    const available = await ensureFont(script);
+    return available ? FONTS[script].path : null;
+}
+
+// Pre-download all fonts in background at startup
+(async () => {
+    for (const key of Object.keys(FONTS)) {
+        downloadFont(key).catch(() => {});
+    }
+    console.log('🔤 Font downloads initiated in background');
+})();
 const multer       = require('multer');
 const FormData     = require('form-data');
 const upload       = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -543,65 +599,62 @@ app.post('/api/download/pdf', requireAuth, async (req, res) => {
     const { content, locale } = req.body;
     if (!content) return res.status(400).send('No content provided');
 
-    const isJapanese = locale === 'ja-JP' ||
-        /[\u3000-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(content);
-
-    // For Japanese: ensure font is available
-    let jaFontAvailable = false;
-    if (isJapanese) {
-        await ensureJapaneseFont();
-        jaFontAvailable = fs.existsSync(NOTO_FONT_PATH);
-        if (!jaFontAvailable) {
-            console.warn('⚠️  Japanese font unavailable — PDF may show junk chars');
-        }
-    }
+    // Auto-detect script from content (covers Japanese, all Indian scripts, Latin)
+    const fontPath = await getFontPath(content);
+    const isNonLatin = fontPath !== null;
+    const isJapanese = locale === 'ja-JP' || /[\u3000-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]/.test(content);
 
     const doc = new PDFDocument({ margin: 50, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=legal-document.pdf');
     doc.pipe(res);
 
-    // Register and set font
-    const setFont = (style) => {
-        if (isJapanese && jaFontAvailable) {
-            // NotoSansCJK covers all Japanese + latin chars
-            doc.font(NOTO_FONT_PATH);
+    // Set font — Noto for any non-Latin script, Helvetica for English
+    const setFont = () => {
+        if (isNonLatin && fontPath) {
+            doc.font(fontPath);
         } else {
-            doc.font(style === 'bold' ? 'Helvetica-Bold' : 'Helvetica');
+            doc.font('Helvetica');
+        }
+    };
+    const setBoldFont = () => {
+        if (isNonLatin && fontPath) {
+            doc.font(fontPath); // Noto Regular (bold variant download optional)
+        } else {
+            doc.font('Helvetica-Bold');
         }
     };
 
     const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+    const fontSize = isNonLatin ? 10 : 11;
 
     // Title
-    setFont('bold');
-    doc.fontSize(16).text(lines[0], { align: 'center' });
+    setBoldFont();
+    doc.fontSize(isNonLatin ? 14 : 16).text(lines[0], { align: 'center' });
     doc.moveDown(2);
 
-    // Body lines
+    // Body
     lines.slice(1).forEach(line => {
-        // Detect heading: starts with number like "1." "1.1" or Japanese "第1条"
-        const isHeading = /^(\d+(\.\d+)*\.|第\d+条)/.test(line);
+        const isHeading = /^(\d+(\.\d+)*\.|第\d+条|[A-Z]{2,})/.test(line);
         if (isHeading) {
-            setFont('bold');
-            doc.moveDown(0.5).fontSize(isJapanese ? 10 : 11).text(line, { align: 'left' });
+            setBoldFont();
+            doc.moveDown(0.5).fontSize(fontSize).text(line, { align: 'left' });
         } else {
-            setFont('normal');
-            doc.moveDown(0.3).fontSize(isJapanese ? 10 : 11).text(line, {
+            setFont();
+            doc.moveDown(0.3).fontSize(fontSize).text(line, {
                 align: isJapanese ? 'left' : 'justify',
                 lineGap: 4
             });
         }
     });
 
-    // Footer disclaimer
+    // Footer disclaimer — switches by locale
     const disclaimer = isJapanese
         ? '免責事項：このAI生成文書は、資格を持つ法律の専門家が確認する必要があります。'
         : 'Disclaimer: This document is AI-generated and must be reviewed by a qualified legal professional.';
 
-    setFont('normal');
+    setFont();
     doc.moveDown(2).fontSize(8).text(disclaimer, { align: 'center' });
-
     doc.end();
 });
 
