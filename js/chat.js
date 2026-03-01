@@ -301,6 +301,11 @@ const ChatAssistant = (() => {
     //   TEXT-TO-SPEECH (ElevenLabs via backend)
     // ══════════════════════════════════════════════════════════════
 
+    // ── Speak-latest guard ──────────────────────────────────────────
+    // Each speakText() call gets a unique ID. If a newer call arrives
+    // while we are still fetching/playing, the older one is abandoned.
+    let _speakSeq = 0;
+
     async function speakText(text, onFinish) {
         if (!text || !text.trim()) return;
 
@@ -308,6 +313,9 @@ const ChatAssistant = (() => {
         if (!token) return;
 
         const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
+
+        // Increment sequence — any in-flight call with an older ID will bail out
+        const mySeq = ++_speakSeq;
 
         stopSpeaking(); // stop any current audio
 
@@ -333,6 +341,10 @@ const ChatAssistant = (() => {
             if (!response.ok) throw new Error('TTS failed');
 
             const arrayBuffer = await response.arrayBuffer();
+
+            // A newer speakText() was called while we were fetching — abandon this one
+            if (mySeq !== _speakSeq) return;
+
             chatAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const decoded = await chatAudioCtx.decodeAudioData(arrayBuffer);
 
@@ -352,6 +364,8 @@ const ChatAssistant = (() => {
 
         } catch (err) {
             if (err.name === 'AbortError') return;
+            // Only fallback if still the latest request
+            if (mySeq !== _speakSeq) return;
             // Fallback to browser TTS
             fallbackSpeak(text, onFinish);
         }
