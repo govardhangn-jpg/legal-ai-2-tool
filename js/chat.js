@@ -38,14 +38,14 @@ const ChatAssistant = (() => {
     // Detect Android — Web Speech API unreliable on Android Chrome
     const isAndroid = /android/i.test(navigator.userAgent);
 
+    // ── Locale helper ─────────────────────────────────────────────
+    function getLocale() {
+        return window.CONFIG?.getLocale() || localStorage.getItem('samarthaa_locale') || 'en-IN';
+    }
+    function isJapanese() { return getLocale() === 'ja-JP'; }
+
     // ── Suggested questions per mode ──────────────────────────────
-    const SUGGESTIONS = {
-        default: [
-            'What are my rights as a tenant in India?',
-            'Explain the Indian Contract Act 1872',
-            'How to file a consumer complaint?',
-            'What is anticipatory bail?'
-        ],
+    const SUGGESTIONS_EN = {
         contract: [
             'Explain the key clauses in this contract',
             'What are my obligations under this agreement?',
@@ -65,6 +65,27 @@ const ChatAssistant = (() => {
             'What are the next legal steps I should take?'
         ]
     };
+    const SUGGESTIONS_JA = {
+        contract: [
+            'この契約の主要条項を説明してください',
+            'この契約における私の義務は何ですか？',
+            '注意すべきリスクのある条項はありますか？',
+            '当事者が契約違反した場合はどうなりますか？'
+        ],
+        research: [
+            'この判例の主要な法的原則をまとめてください',
+            'この判例法は私の状況にどう適用されますか？',
+            'この問題に関する現在の法的立場は何ですか？',
+            '最も関連性の高い高裁判例はどれですか？'
+        ],
+        opinion: [
+            '裁判で勝訴する可能性はどのくらいですか？',
+            '手続きを進めるために必要な書類は何ですか？',
+            'この意見書をわかりやすく説明してください',
+            '次にどのような法的手続きを取るべきですか？'
+        ]
+    };
+    const SUGGESTIONS = isJapanese() ? SUGGESTIONS_JA : SUGGESTIONS_EN;
 
     // ══════════════════════════════════════════════════════════════
     //   PANEL OPEN / CLOSE
@@ -394,7 +415,7 @@ const ChatAssistant = (() => {
     function fallbackSpeak(text, onFinish) {
         if (!window.speechSynthesis) { finishSpeaking(); return; }
         const u    = new SpeechSynthesisUtterance(text.substring(0, 500));
-        u.lang     = 'en-IN';
+        u.lang     = getLocale();
         u.rate     = 0.9;
         u.onend    = () => { finishSpeaking(); if (onFinish) onFinish(); };
         u.onerror  = () => { finishSpeaking(); };
@@ -445,7 +466,7 @@ const ChatAssistant = (() => {
     function startWebSpeech() {
         const SR  = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SR();
-        recognition.lang           = 'en-IN';
+        recognition.lang           = getLocale();
         recognition.continuous     = false;
         recognition.interimResults = true;
 
@@ -656,23 +677,34 @@ const ChatAssistant = (() => {
         if (!token) { alert('Please log in first.'); return; }
 
         // Build plain-text transcript
-        const now    = new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' });
+        const now    = new Date().toLocaleString(getLocale(), { dateStyle: 'long', timeStyle: 'short' });
         const mode   = documentContext
             ? { contract: 'Contract Drafting', research: 'Case Research', opinion: 'Legal Opinion' }[documentContext.mode] || documentContext.mode
             : 'General';
 
-        let content = `SAMARTHAA-LEGAL — CHAT TRANSCRIPT\n`;
-        content    += `Mode: ${mode}\n`;
-        content    += `Date: ${now}\n`;
-        content    += `${'─'.repeat(60)}\n\n`;
+        const ja = isJapanese();
+        const header    = ja ? 'SAMARTHAA-LEGAL — チャット記録' : 'SAMARTHAA-LEGAL — CHAT TRANSCRIPT';
+        const modeLabel = ja ? 'モード' : 'Mode';
+        const dateLabel = ja ? '日時'   : 'Date';
+        const youLabel  = ja ? 'あなた' : 'YOU';
+        const aiLabel   = ja ? 'SAMARTHAA AI' : 'SAMARTHAA AI';
+        const divider   = '─'.repeat(60);
+        const disc      = ja
+            ? '免責事項：このAIが生成した会話は情報提供のみを目的としており、法的アドバイスを構成するものではありません。必ず資格を持つ法律の専門家にご相談ください。'
+            : 'Disclaimer: This AI-generated conversation is for informational purposes only and does not constitute legal advice. Always consult a qualified legal professional.';
+
+        let content = `${header}\n`;
+        content    += `${modeLabel}: ${mode}\n`;
+        content    += `${dateLabel}: ${now}\n`;
+        content    += `${divider}\n\n`;
 
         conversationHistory.forEach(msg => {
-            const speaker = msg.role === 'user' ? 'YOU' : 'SAMARTHAA AI';
+            const speaker = msg.role === 'user' ? youLabel : aiLabel;
             content += `${speaker}\n${msg.content}\n\n`;
         });
 
-        content += `${'─'.repeat(60)}\n`;
-        content += `Disclaimer: This AI-generated conversation is for informational purposes only and does not constitute legal advice. Always consult a qualified legal professional.`;
+        content += `${divider}\n`;
+        content += disc;
 
         // Use existing backend PDF endpoint
         const baseUrl = (window.CONFIG?.API?.BACKEND_URL || 'https://legal-ai-2-tool-1.onrender.com/api/chat')
