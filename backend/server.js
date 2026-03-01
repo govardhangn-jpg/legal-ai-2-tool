@@ -21,10 +21,6 @@ const cors         = require('cors');
 const Anthropic    = require('@anthropic-ai/sdk');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = require('docx');
 const PDFDocument  = require('pdfkit');
-const https        = require('https');
-const os           = require('os');
-const path         = require('path');
-const fs           = require('fs');
 
 // ── Download NotoSansCJK font for Japanese PDF support ────────────
 // Font is cached to /tmp so it persists across requests on Render
@@ -58,6 +54,9 @@ function ensureJapaneseFont() {
 ensureJapaneseFont();
 const crypto       = require('crypto');
 const https        = require('https');
+const os           = require('os');
+const path         = require('path');
+const fs           = require('fs');
 const multer       = require('multer');
 const FormData     = require('form-data');
 const upload       = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
