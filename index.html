@@ -179,10 +179,10 @@
                     </div>
 
                     <div style="margin-top:16px;">
-                        <label for="applicableLaws" style="display:block;font-size:0.82rem;font-weight:600;color:#5a4e38;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Applicable Laws (if known)</label>
+                        <label for="applicableLaws" id="applicableLawsLabel" style="display:block;font-size:0.82rem;font-weight:600;color:#5a4e38;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Applicable Laws (if known)</label>
                         <input type="text" id="applicableLaws"
                                style="width:100%;padding:12px 16px;font-size:16px;border:1.5px solid #d4c9a8;border-radius:8px;"
-                               placeholder="e.g., Transfer of Property Act 1882, Indian Contract Act 1872">
+                               id="applicableLawsInput" placeholder="e.g., Transfer of Property Act 1882, Indian Contract Act 1872">
                     </div>
                 </div>
             </div>
@@ -195,7 +195,7 @@
 
             <div class="loading" id="loadingIndicator" role="status">
                 <div class="spinner"></div>
-                <span>Processing your request&hellip;</span>
+                <span id="processingText">Processing your request&hellip;</span>
             </div>
 
             <div class="error-message" id="errorMessage" role="alert"></div>
@@ -309,6 +309,10 @@
         set('loginTitle',          tr.loginTitle);
         set('countryLabel',        tr.countryLabel);
         set('chatSubtitle',        tr.chatSubtitle);
+        set('applicableLawsLabel',  tr.applicableLawsLabel);
+        set('processingText',       tr.processing);
+        setph('applicableLawsInput', tr.applicableLawsPlaceholder);
+        setph('chatInput',           tr.chatPlaceholder);
 
         setph('loginEmail',        tr.loginEmailPh);
         setph('loginPassword',     tr.loginPasswordPh);
