@@ -26,6 +26,7 @@ const ChatAssistant = (() => {
     let chatAudioCtx    = null;
     let chatAudioSrc    = null;
     let isSpeaking      = false;
+    let _sentByVoice    = false;  // true when message was sent via mic tap
     let ttsAbortCtrl    = null;
     let chatAudioEl     = null;   // HTMLAudioElement — mobile-safe playback
 
@@ -323,8 +324,15 @@ const ChatAssistant = (() => {
             addMessage('ai', aiReply);
             conversationHistory.push({ role: 'assistant', content: aiReply });
 
-            // Auto-speak AI reply
-            speakText(aiReply);
+            // Auto-activate speak button on this message if sent by voice
+            // (button click = user gesture context preserved by browser)
+            if (_sentByVoice) {
+                _sentByVoice = false;
+                const latestSpeakBtn = messagesEl.querySelector('.chat-msg.ai:last-child .chat-msg-speak');
+                if (latestSpeakBtn && !latestSpeakBtn.classList.contains('playing')) {
+                    latestSpeakBtn.click();
+                }
+            }
 
         } catch (err) {
             hideTyping();
@@ -533,7 +541,7 @@ const ChatAssistant = (() => {
             isRecording = false;
             recognition = null;
             setTimeout(() => {
-                if (chatInput.value.trim()) sendMessage();
+                if (chatInput.value.trim()) { _sentByVoice = true; sendMessage(); }
             }, 200);
         };
 
@@ -605,7 +613,7 @@ const ChatAssistant = (() => {
                     chatInput.value = data.text.trim();
                     autoResizeInput();
                     setMicRecording(false);
-                    setTimeout(() => sendMessage(), 100);
+                    setTimeout(() => { _sentByVoice = true; sendMessage(); }, 100);
                 } else {
                     setMicRecording(false);
                     chatInput.placeholder = 'Could not hear clearly. Try again.';
