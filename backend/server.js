@@ -797,20 +797,24 @@ app.post('/api/download/word', requireAuth, async (req, res) => {
 //   POST /api/transcribe  multipart/form-data  field: audio
 // =====================================================
 app.post('/api/transcribe', requireAuth, upload.single('audio'), async (req, res) => {
-    if (!ANTHROPIC_API_KEY) {
-        return res.status(503).json({ text: '', error: 'Transcription not configured — ANTHROPIC_API_KEY missing' });
-    }
-
     if (!req.file) {
         return res.status(400).json({ text: '', error: 'No audio file received' });
     }
 
-    try {
-        console.log(`🎙️  Transcribe request from ${req.user.email} — ${req.file.size} bytes (${req.file.mimetype})`);
+    if (!ANTHROPIC_API_KEY) {
+        return res.status(503).json({ text: '', error: 'API key not configured' });
+    }
 
-        // Convert audio buffer to base64
-        const audioBase64  = req.file.buffer.toString('base64');
-        const mimeType     = req.file.mimetype || 'audio/webm';
+    try {
+        // Normalise mime type — Android sends audio/mp4, iOS/desktop send audio/webm
+        let mimeType = (req.file.mimetype || 'audio/webm').split(';')[0].trim();
+
+        // Claude supports: audio/webm, audio/mp4, audio/ogg, audio/wav, audio/flac, audio/mpeg
+        const supported = ['audio/webm','audio/mp4','audio/ogg','audio/wav','audio/flac','audio/mpeg','audio/mp3'];
+        if (!supported.includes(mimeType)) mimeType = 'audio/webm'; // safe default
+
+        const audioBase64 = req.file.buffer.toString('base64');
+        console.log(`🎙️  Transcribe: ${req.user.email} — ${req.file.size}B as ${mimeType}`);
 
         const response = await anthropic.messages.create({
             model:      'claude-opus-4-5',
@@ -828,18 +832,18 @@ app.post('/api/transcribe', requireAuth, upload.single('audio'), async (req, res
                     },
                     {
                         type: 'text',
-                        text: 'Please transcribe the speech in this audio recording. Return ONLY the transcribed text with no explanation, preamble or punctuation changes. Preserve Indian legal terminology, court names, acts and statute names exactly as spoken.'
+                        text: 'Transcribe the speech in this audio. Return ONLY the spoken words, no commentary, no punctuation changes, no explanation. Preserve legal terminology, court names, acts and statutes exactly as spoken.'
                     }
                 ]
             }]
         });
 
         const text = response.content[0]?.text?.trim() || '';
-        console.log(`✅ Transcribed: "${text.substring(0, 80)}..."`);
+        console.log(`✅ Transcribed: "${text.substring(0, 80)}"`);
         res.json({ text });
 
     } catch (err) {
-        console.error('❌ Claude transcription error:', err.message);
+        console.error('❌ Transcription error:', err.message);
         res.status(500).json({ text: '', error: 'Transcription failed: ' + err.message });
     }
 });

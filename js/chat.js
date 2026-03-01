@@ -560,9 +560,13 @@ const ChatAssistant = (() => {
             ? 'audio/webm;codecs=opus'
             : MediaRecorder.isTypeSupported('audio/webm')
             ? 'audio/webm'
-            : 'audio/mp4';
+            : MediaRecorder.isTypeSupported('audio/mp4')
+            ? 'audio/mp4'
+            : '';
 
-        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorder = mimeType
+            ? new MediaRecorder(stream, { mimeType })
+            : new MediaRecorder(stream); // let browser pick format
 
         mediaRecorder.ondataavailable = e => {
             if (e.data && e.data.size > 0) audioChunks.push(e.data);
@@ -577,7 +581,9 @@ const ChatAssistant = (() => {
             setMicRecording(false, 'Transcribing…');
             stream.getTracks().forEach(t => t.stop());
 
-            const audioBlob = new Blob(audioChunks, { type: mimeType });
+            // Use the actual mimeType the browser recorded with
+            const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
+            const audioBlob  = new Blob(audioChunks, { type: actualMime.split(';')[0] });
             await transcribeAudio(audioBlob);
 
             useMediaRecorder = false;
@@ -599,7 +605,11 @@ const ChatAssistant = (() => {
 
         try {
             const formData = new FormData();
-            formData.append('audio', audioBlob, 'voice.webm');
+            const ext = audioBlob.type.includes('mp4') ? 'mp4'
+                       : audioBlob.type.includes('ogg') ? 'ogg'
+                       : audioBlob.type.includes('wav') ? 'wav'
+                       : 'webm';
+            formData.append('audio', audioBlob, `voice.${ext}`);
 
             const baseUrl = 'https://legal-ai-2-tool-1.onrender.com';
             const response = await fetch(`${baseUrl}/api/transcribe`, {
