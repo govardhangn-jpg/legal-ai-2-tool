@@ -35,16 +35,16 @@ const fs           = require('fs');
 
 const FONTS = {
     // Japanese / CJK
-    japanese:  { path: path.join(os.tmpdir(), 'NotoSansCJK.otf'),      url: 'https://github.com/googlefonts/noto-cjk/raw/main/Sans/SubsetOTF/JP/NotoSansCJKjp-Regular.otf' },
+    japanese:  { path: path.join(os.tmpdir(), 'NotoSansCJK.otf'),      url: 'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/SubsetOTF/JP/NotoSansCJKjp-Regular.otf' },
     // Indian scripts
-    devanagari:{ path: path.join(os.tmpdir(), 'NotoSansDevanagari.ttf'),url: 'https://github.com/notofonts/devanagari/raw/main/fonts/NotoSansDevanagari/unhinted/ttf/NotoSansDevanagari-Regular.ttf' },
-    kannada:   { path: path.join(os.tmpdir(), 'NotoSansKannada.ttf'),   url: 'https://github.com/notofonts/kannada/raw/main/fonts/NotoSansKannada/unhinted/ttf/NotoSansKannada-Regular.ttf' },
-    tamil:     { path: path.join(os.tmpdir(), 'NotoSansTamil.ttf'),     url: 'https://github.com/notofonts/tamil/raw/main/fonts/NotoSansTamil/unhinted/ttf/NotoSansTamil-Regular.ttf' },
-    telugu:    { path: path.join(os.tmpdir(), 'NotoSansTelugu.ttf'),    url: 'https://github.com/notofonts/telugu/raw/main/fonts/NotoSansTelugu/unhinted/ttf/NotoSansTelugu-Regular.ttf' },
-    malayalam: { path: path.join(os.tmpdir(), 'NotoSansMalayalam.ttf'), url: 'https://github.com/notofonts/malayalam/raw/main/fonts/NotoSansMalayalam/unhinted/ttf/NotoSansMalayalam-Regular.ttf' },
-    bengali:   { path: path.join(os.tmpdir(), 'NotoSansBengali.ttf'),   url: 'https://github.com/notofonts/bengali/raw/main/fonts/NotoSansBengali/unhinted/ttf/NotoSansBengali-Regular.ttf' },
-    gujarati:  { path: path.join(os.tmpdir(), 'NotoSansGujarati.ttf'),  url: 'https://github.com/notofonts/gujarati/raw/main/fonts/NotoSansGujarati/unhinted/ttf/NotoSansGujarati-Regular.ttf' },
-    gurmukhi:  { path: path.join(os.tmpdir(), 'NotoSansGurmukhi.ttf'),  url: 'https://github.com/notofonts/gurmukhi/raw/main/fonts/NotoSansGurmukhi/unhinted/ttf/NotoSansGurmukhi-Regular.ttf' },
+    devanagari:{ path: path.join(os.tmpdir(), 'NotoSansDevanagari.ttf'),url: 'https://raw.githubusercontent.com/notofonts/devanagari/main/fonts/NotoSansDevanagari/unhinted/ttf/NotoSansDevanagari-Regular.ttf' },
+    kannada:   { path: path.join(os.tmpdir(), 'NotoSansKannada.ttf'),   url: 'https://raw.githubusercontent.com/notofonts/kannada/main/fonts/NotoSansKannada/unhinted/ttf/NotoSansKannada-Regular.ttf' },
+    tamil:     { path: path.join(os.tmpdir(), 'NotoSansTamil.ttf'),     url: 'https://raw.githubusercontent.com/notofonts/tamil/main/fonts/NotoSansTamil/unhinted/ttf/NotoSansTamil-Regular.ttf' },
+    telugu:    { path: path.join(os.tmpdir(), 'NotoSansTelugu.ttf'),    url: 'https://raw.githubusercontent.com/notofonts/telugu/main/fonts/NotoSansTelugu/unhinted/ttf/NotoSansTelugu-Regular.ttf' },
+    malayalam: { path: path.join(os.tmpdir(), 'NotoSansMalayalam.ttf'), url: 'https://raw.githubusercontent.com/notofonts/malayalam/main/fonts/NotoSansMalayalam/unhinted/ttf/NotoSansMalayalam-Regular.ttf' },
+    bengali:   { path: path.join(os.tmpdir(), 'NotoSansBengali.ttf'),   url: 'https://raw.githubusercontent.com/notofonts/bengali/main/fonts/NotoSansBengali/unhinted/ttf/NotoSansBengali-Regular.ttf' },
+    gujarati:  { path: path.join(os.tmpdir(), 'NotoSansGujarati.ttf'),  url: 'https://raw.githubusercontent.com/notofonts/gujarati/main/fonts/NotoSansGujarati/unhinted/ttf/NotoSansGujarati-Regular.ttf' },
+    gurmukhi:  { path: path.join(os.tmpdir(), 'NotoSansGurmukhi.ttf'),  url: 'https://raw.githubusercontent.com/notofonts/gurmukhi/main/fonts/NotoSansGurmukhi/unhinted/ttf/NotoSansGurmukhi-Regular.ttf' },
 };
 
 // Unicode ranges for script detection
@@ -68,26 +68,58 @@ function detectScript(text) {
     return null; // Latin / English — use Helvetica
 }
 
-// Download a single font file
+// Download a single font file — with redirect following
 function downloadFont(key) {
     const font = FONTS[key];
+    if (fs.existsSync(font.path)) return Promise.resolve(true);
+
     return new Promise((resolve) => {
-        if (fs.existsSync(font.path)) return resolve(true);
-        console.log(`⬇️  Downloading \${key} font...`);
-        const file = fs.createWriteStream(font.path);
-        https.get(font.url, (res) => {
-            if (res.statusCode !== 200) {
-                file.close();
-                console.warn(`⚠️  \${key} font download failed: HTTP \${res.statusCode}`);
-                return resolve(false);
-            }
-            res.pipe(file);
-            file.on('finish', () => { file.close(); console.log(`✅ \${key} font ready`); resolve(true); });
-        }).on('error', (err) => {
-            console.warn(`⚠️  \${key} font error: \${err.message}`);
-            try { fs.unlinkSync(font.path); } catch {}
-            resolve(false);
-        });
+        console.log('Downloading ' + key + ' font...');
+
+        const doRequest = (url, redirectCount) => {
+            if (redirectCount > 5) { console.warn('Too many redirects for ' + key); return resolve(false); }
+            const lib = url.startsWith('https') ? https : require('http');
+
+            lib.get(url, { headers: { 'User-Agent': 'Node.js' } }, (res) => {
+                // Follow 301/302/307 redirects
+                if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+                    res.resume(); // drain response
+                    console.log('Redirect ' + res.statusCode + ' to ' + res.headers.location);
+                    return doRequest(res.headers.location, redirectCount + 1);
+                }
+                if (res.statusCode !== 200) {
+                    res.resume();
+                    console.warn(key + ' font HTTP ' + res.statusCode);
+                    return resolve(false);
+                }
+                const file = fs.createWriteStream(font.path);
+                res.pipe(file);
+                file.on('finish', () => {
+                    file.close();
+                    try {
+                        const size = fs.statSync(font.path).size;
+                        if (size < 5000) {
+                            fs.unlinkSync(font.path);
+                            console.warn(key + ' font too small (' + size + 'B) — discarded');
+                            return resolve(false);
+                        }
+                        console.log(key + ' font ready (' + Math.round(size/1024) + 'KB)');
+                        resolve(true);
+                    } catch(e) { resolve(false); }
+                });
+                file.on('error', (err) => {
+                    try { fs.unlinkSync(font.path); } catch {}
+                    console.warn(key + ' font write error: ' + err.message);
+                    resolve(false);
+                });
+            }).on('error', (err) => {
+                try { fs.unlinkSync(font.path); } catch {}
+                console.warn(key + ' font request error: ' + err.message);
+                resolve(false);
+            });
+        };
+
+        doRequest(font.url, 0);
     });
 }
 
@@ -106,12 +138,18 @@ async function getFontPath(text) {
     return available ? FONTS[script].path : null;
 }
 
-// Pre-download all fonts in background at startup
+// Track which fonts are confirmed ready
+const _fontReady = {};
+
+// Pre-download all fonts in background at startup — staggered to avoid hammering GitHub
 (async () => {
+    console.log('Font downloads starting in background...');
     for (const key of Object.keys(FONTS)) {
-        downloadFont(key).catch(() => {});
+        downloadFont(key)
+            .then(ok => { _fontReady[key] = ok; })
+            .catch(() => { _fontReady[key] = false; });
+        await new Promise(r => setTimeout(r, 300)); // 300ms between each download
     }
-    console.log('🔤 Font downloads initiated in background');
 })();
 const multer       = require('multer');
 const FormData     = require('form-data');
