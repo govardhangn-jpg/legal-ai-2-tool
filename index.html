@@ -52,7 +52,7 @@
             <p class="tagline" id="appSubtitle">Contract Drafting &bull; Case Research &bull; Legal Opinions</p>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-            <button id="langToggleBtn" onclick="if(window.toggleLocale) toggleLocale()" title="Switch language" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:0.85rem;font-weight:600;letter-spacing:0.02em;">🇮🇳 EN</button>
+            <span id="localeFlag" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:20px;font-size:0.85rem;font-weight:600;">🇮🇳 India</span>
             <button id="logoutBtn">Logout</button>
         </div>
     </header>
@@ -268,15 +268,11 @@
         const btn = document.getElementById(btnId);
         if (btn) btn.classList.add('active');
         // Update html lang
-        document.getElementById('htmlRoot').lang = locale === 'ja-JP' ? 'ja' : 'en';
-        // Update header toggle
-        const tog = document.getElementById('langToggleBtn');
-        if (tog) tog.textContent = locale === 'ja-JP' ? '🇯🇵 JA' : '🇮🇳 EN';
-    }
-
-    function toggleLocale() {
-        const current = CONFIG.getLocale();
-        setAppLocale(current === 'ja-JP' ? 'en-IN' : 'ja-JP');
+        const htmlRoot = document.getElementById('htmlRoot');
+        if (htmlRoot) htmlRoot.lang = locale === 'ja-JP' ? 'ja' : 'en';
+        // Update flag badge in header
+        const flag = document.getElementById('localeFlag');
+        if (flag) flag.textContent = locale === 'ja-JP' ? '🇯🇵 日本' : '🇮🇳 India';
     }
 
     function applyTranslations() {

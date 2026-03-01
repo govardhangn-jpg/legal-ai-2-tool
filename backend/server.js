@@ -635,7 +635,7 @@ app.post('/api/transcribe', requireAuth, upload.single('audio'), async (req, res
 // =====================================================
 app.post('/api/chat-assistant', requireAuth, async (req, res) => {
     try {
-        const { message, history = [], documentContext, currentMode } = req.body;
+        const { message, history = [], documentContext, currentMode, locale } = req.body;
 
         if (!message || !message.trim())
             return res.status(400).json({ error: 'No message provided' });
@@ -644,7 +644,7 @@ app.post('/api/chat-assistant', requireAuth, async (req, res) => {
             return res.status(500).json({ error: 'Anthropic API key not configured' });
 
         // ── Build system prompt ────────────────────────────────
-        const isJapaneseChat = body.locale === 'ja-JP';
+        const isJapaneseChat = locale === 'ja-JP';
 
         let systemPrompt = isJapaneseChat
         ? `あなたはSAMARTHAAです。日本法を専門とするシニア法律アシスタントです。以下の分野に深い専門知識を持っています：

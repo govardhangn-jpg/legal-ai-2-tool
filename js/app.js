@@ -32,9 +32,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             clearSession();
             localStorage.removeItem('token');
+            localStorage.removeItem('samarthaa_locale');
             document.getElementById('mainApp').style.display     = 'none';
             document.getElementById('loginSection').style.display = 'block';
             logoutBtn.style.display = 'none';
+            // Reset locale buttons on login screen
+            if (window.setAppLocale) setAppLocale('en-IN');
             if (window.ChatAssistant) window.ChatAssistant.hideTrigger();
         });
     }
@@ -130,6 +133,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
 
                     localStorage.setItem('token', data.token);
+                    // Lock locale to country selected at login
+                    if (window.CONFIG) {
+                        const savedLocale = localStorage.getItem('samarthaa_locale') || 'en-IN';
+                        CONFIG.setLocale(savedLocale);
+                        CONFIG.applyLocale();
+                        if (window.applyTranslations) applyTranslations();
+                    }
                     loginSection.style.display = 'none';
                     mainApp.style.display      = 'block';
                     if (logoutBtn) logoutBtn.style.display = 'block';
