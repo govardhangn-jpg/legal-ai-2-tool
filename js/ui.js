@@ -143,7 +143,7 @@ const UI = {
                 throw new Error('Empty response from AI service');
 
             this.currentDocumentId = response.documentId;
-            this.displayResult(response.output);
+            this.displayResult(response.output, response.verifiedSources || []);
 
         } catch (err) {
             console.error(err);
@@ -153,7 +153,7 @@ const UI = {
         }
     },
 
-    displayResult(result) {
+    displayResult(result, verifiedSources) {
         this.elements.resultContent.textContent = result;
         this.elements.resultTitle.textContent   = CONFIG.TITLES[this.selectedMode].result;
         this.elements.resultSection.classList.add('active');
@@ -173,9 +173,65 @@ const UI = {
         // Show ElevenLabs badge
         if (this.elements.elBadge) this.elements.elBadge.style.display = 'inline';
 
+        // Render Indian Kanoon verification panel
+        this.renderVerifiedSources(verifiedSources || []);
+
         setTimeout(() => {
             this.elements.resultSection.scrollIntoView({ behavior: 'smooth' });
         }, 300);
+    },
+
+    renderVerifiedSources(sources) {
+        // Remove any existing panel
+        const existing = document.getElementById('ikVerificationPanel');
+        if (existing) existing.remove();
+
+        const panel = document.createElement('div');
+        panel.id = 'ikVerificationPanel';
+        panel.style.cssText = 'margin-top:20px;padding:16px 20px;border:1.5px solid #8b6914;border-radius:10px;background:#1e1208;font-family:IBM Plex Sans,sans-serif;font-size:0.875rem';
+
+        if (sources.length === 0) {
+            panel.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+                  '<span style="font-size:1.1rem">&#9878;</span>' +
+                  '<strong style="color:#c9a84c">Indian Kanoon Citation Check</strong>' +
+                  '<span style="margin-left:auto;background:#5a3e1b;color:#f5c842;padding:2px 8px;border-radius:12px;font-size:0.75rem">No citations detected</span>' +
+                '</div>' +
+                '<p style="color:#b8a888;margin:0;font-size:0.8rem">No specific case citations were detected in this output. ' +
+                'If the document references cases, verify them manually at ' +
+                '<a href="https://indiankanoon.org" target="_blank" rel="noopener noreferrer" style="color:#c9a84c">indiankanoon.org</a>.</p>';
+        } else {
+            var rows = sources.map(function(s) {
+                return '<div style="padding:10px 0;border-bottom:1px solid #3a2a12">' +
+                    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">' +
+                        '<span style="background:#1a4d2e;color:#4ade80;padding:2px 7px;border-radius:10px;font-size:0.7rem;font-weight:600">&#10003; VERIFIED</span>' +
+                        '<span style="color:#f5e6c8;font-weight:500">' + s.citation + '</span>' +
+                    '</div>' +
+                    '<div style="color:#c9a84c;font-size:0.78rem;margin-bottom:3px">' + s.title + '</div>' +
+                    '<div style="display:flex;gap:12px;align-items:center">' +
+                        '<span style="color:#7a6a50;font-size:0.75rem">' + (s.court || '') + '</span>' +
+                        '<a href="' + s.url + '" target="_blank" rel="noopener noreferrer" ' +
+                           'style="color:#c9a84c;font-size:0.75rem;text-decoration:none;margin-left:auto">View on Indian Kanoon &rarr;</a>' +
+                    '</div>' +
+                    (s.snippet ? '<div style="color:#9a8a70;font-size:0.75rem;margin-top:4px;font-style:italic">' + s.snippet.substring(0, 150) + '&hellip;</div>' : '') +
+                '</div>';
+            }).join('');
+
+            panel.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">' +
+                  '<span style="font-size:1.1rem">&#9878;</span>' +
+                  '<strong style="color:#c9a84c">Indian Kanoon Citation Verification</strong>' +
+                  '<span style="margin-left:auto;background:#1a4d2e;color:#4ade80;padding:2px 8px;border-radius:12px;font-size:0.75rem">' + sources.length + ' verified</span>' +
+                '</div>' +
+                rows +
+                '<p style="color:#7a6a50;margin:10px 0 0;font-size:0.75rem">' +
+                'Citations verified against Indian Kanoon database. ' +
+                'Always confirm citations with the linked judgments before relying on them in court.' +
+                '</p>';
+        }
+
+        var resultSection = document.getElementById('resultSection');
+        if (resultSection) resultSection.appendChild(panel);
     },
 
     clearForm() {
@@ -185,7 +241,9 @@ const UI = {
         this.elements.resultSection.classList.remove('active');
         this.hideError();
 
-        if (this.elements.downloadWordBtn) this.elements.downloadWordBtn.disabled = true;
+        // Remove Indian Kanoon verification panel
+        const ikPanel = document.getElementById('ikVerificationPanel');
+        if (ikPanel) ikPanel.remove();
         if (this.elements.downloadPdfBtn)  this.elements.downloadPdfBtn.disabled  = true;
 
         if (this.elements.elBadge) this.elements.elBadge.style.display = 'none';
