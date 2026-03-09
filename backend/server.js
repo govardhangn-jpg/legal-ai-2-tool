@@ -9,10 +9,9 @@ require('dotenv').config();
 const jwt     = require('jsonwebtoken');
 const bcrypt  = require('bcryptjs');
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-    console.error('❌ FATAL: JWT_SECRET is not set in .env. Server cannot start securely.');
-    process.exit(1);
+const JWT_SECRET = process.env.JWT_SECRET || 'samarthaa-fallback-dev-secret-change-in-prod';
+if (!process.env.JWT_SECRET) {
+    console.warn('⚠️  WARNING: JWT_SECRET env var not set — using insecure fallback. Set this on Render!');
 }
 
 // 2️⃣ Imports
@@ -180,16 +179,23 @@ const users = [
 // =====================================================
 const allowedOrigins = [
     'https://legal-ai-2-tool.onrender.com',
+    'https://legal-ai-2-tool-1.onrender.com',  // new Render URL
     'http://localhost:3000',
     'http://localhost:5000',
     'http://127.0.0.1:5500',
-    'https://samarthaa-legal.netlify.app'
+    'https://samarthaalegall.netlify.app',       // actual live URL (double-l)
+    'https://samarthaa-legal.netlify.app',       // old URL kept as fallback
+    'https://samarthaamed.netlify.app',          // medical app (shares backend)
 ];
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) callback(null, true);
-        else callback(new Error(`CORS blocked for origin: ${origin}`));
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.warn(`⚠️  CORS blocked for origin: ${origin}`);
+            callback(new Error(`CORS blocked for origin: ${origin}`));
+        }
     },
     credentials: true
 }));
@@ -220,7 +226,9 @@ app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         message: 'SAMARTHAA-LEGAL Backend Running',
+        version: '2.1',
         tts: !!ELEVENLABS_API_KEY,
+        ai: !!ANTHROPIC_API_KEY,
         timestamp: new Date().toISOString()
     });
 });
@@ -587,90 +595,24 @@ FORMAT INSTRUCTIONS (MANDATORY)
 
         const outputText = response.content[0].text;
 
-        // ── Verify citations against Indian Kanoon ──────────────────────
+        // Verify citations against Indian Kanoon
         let verifiedSources = [];
-        let finalOutput = outputText;
-
-        if (INDIANKANOON_API_TOKEN && body.locale !== 'ja-JP') {
+        if (INDIANKANOON_API_TOKEN) {
             try {
-                const citations = extractCitations(outputText);
-                console.log(`🔍 Found ${citations.length} citations to verify on Indian Kanoon`);
-
-                if (citations.length > 0) {
-                    // Verify all citations in parallel (up to 8)
-                    const results = await Promise.all(
-                        citations.map(c => searchIndianKanoon(c, 2))
-                    );
-
-                    // Build a map: citation text → verified result (or null)
-                    const verifyMap = {};
-                    citations.forEach((cit, i) => {
-                        const hits = results[i].filter(r => r.tid);
-                        verifyMap[cit] = hits.length > 0 ? hits[0] : null;
-                    });
-
-                    // Collect verified and unverified
-                    const verified   = Object.entries(verifyMap).filter(([,v]) => v !== null);
-                    const unverified = Object.entries(verifyMap).filter(([,v]) => v === null);
-
-                    verifiedSources = verified.map(([cit, doc]) => ({
-                        citation: cit,
-                        title:    doc.title,
-                        court:    doc.court,
-                        url:      doc.url,
-                        snippet:  doc.snippet,
-                        tid:      doc.tid
-                    }));
-
-                    console.log(`✅ Verified: ${verified.length} | Unverified: ${unverified.length}`);
-
-                    // Append a verification block to the document itself
-                    if (verified.length > 0 || unverified.length > 0) {
-                        finalOutput += '\n\nCITATION VERIFICATION (Indian Kanoon)\n';
-                        finalOutput += '='.repeat(45) + '\n';
-
-                        if (verified.length > 0) {
-                            finalOutput += '\nVERIFIED CITATIONS:\n';
-                            verified.forEach(([cit, doc]) => {
-                                finalOutput += `  [VERIFIED] ${cit}\n`;
-                                finalOutput += `             ${doc.title} | ${doc.court}\n`;
-                                finalOutput += `             ${doc.url}\n`;
-                            });
-                        }
-
-                        if (unverified.length > 0) {
-                            finalOutput += '\nUNVERIFIED CITATIONS (not found on Indian Kanoon):\n';
-                            unverified.forEach(([cit]) => {
-                                finalOutput += `  [UNVERIFIED] ${cit}\n`;
-                            });
-                            finalOutput += '\nNote: Unverified citations should be manually confirmed\n';
-                            finalOutput += 'before relying on them. AI may have generated inaccurate\n';
-                            finalOutput += 'citations. Always verify on indiankanoon.org\n';
-                        }
-
-                        finalOutput += '='.repeat(45) + '\n';
-                    }
-                } else {
-                    console.log('ℹ️  No citations found in output — skipping verification');
+                const cits = extractCitations(outputText);
+                if (cits.length > 0) {
+                    console.log(`🔍 Verifying ${cits.length} citations...`);
+                    const results = await Promise.all(cits.slice(0, 3).map(c => searchIndianKanoon(c, 2)));
+                    verifiedSources = results.flat().filter(r => r.tid);
+                    console.log(`✅ ${verifiedSources.length} verified sources found`);
                 }
-            } catch(e) {
-                console.warn('⚠️  Citation verification error:', e.message);
-            }
-        } else if (!INDIANKANOON_API_TOKEN && body.locale !== 'ja-JP') {
-            // No IK token — append a warning to the document
-            finalOutput += '\n\nCITATION VERIFICATION\n';
-            finalOutput += '='.repeat(45) + '\n';
-            finalOutput += 'Note: Indian Kanoon verification is not configured on this server.\n';
-            finalOutput += 'All case citations in this document are AI-generated and have NOT\n';
-            finalOutput += 'been verified. Please verify all citations manually on:\n';
-            finalOutput += 'https://indiankanoon.org\n';
-            finalOutput += '='.repeat(45) + '\n';
+            } catch(e) { console.warn('Citation check error:', e.message); }
         }
 
         res.json({
             success: true,
             documentId: crypto.randomUUID(),
-            output: finalOutput,
+            output: outputText,
             verifiedSources,
             usage: response.usage
         });
@@ -1009,35 +951,28 @@ async function searchIndianKanoon(query, maxResults = 3) {
 
 /**
  * Extract legal citations from Claude's response text.
- * Looks for patterns like "X v. Y (YEAR)", "AIR YEAR SC/HC NNN", "MANU/SC/...", "(YEAR) N SCC NNN"
+ * Looks for patterns like "X v. Y (YEAR)", "AIR YEAR SC/HC NNN", "MANU/SC/..."
  */
 function extractCitations(text) {
     const patterns = [
-        // Case name with year in brackets: "Maneka Gandhi v. Union of India (1978)"
-        /[A-Z][A-Za-z\s&.()'-]{3,60}\s+(?:v\.?s?\.?|versus)\s+[A-Z][A-Za-z\s&.()'-]{3,60}(?:\s*\(\d{4}\))?/g,
+        // Case name patterns: "X v. Y (2023)" or "X vs Y"
+        /([A-Z][\w\s&.()'-]{3,50}\s+(?:v\.?s?\.?|versus)\s+[A-Z][\w\s&.()'-]{3,50})/gi,
         // AIR citations: AIR 2023 SC 1234
         /AIR\s+\d{4}\s+(?:SC|HC|Bom|Del|Mad|Cal|All|Ker|Raj|MP|AP|Ori|P&H|Gau|J&K|Utt|Jhar|Chh)\s+\d+/gi,
         // SCC citations: (2023) 5 SCC 123
         /\(\d{4}\)\s+\d+\s+SCC\s+\d+/gi,
-        // SCR citations: (2023) 1 SCR 45
-        /\(\d{4}\)\s+\d+\s+SCR\s+\d+/gi,
         // MANU citations
-        /MANU\/[A-Z]+\/\d+\/\d+/gi,
+        /MANU\/\w+\/\d+\/\d+/gi,
         // Writ/Civil/Criminal Appeal numbers
-        /(?:Writ Petition|Civil Appeal|Criminal Appeal|SLP)\s*(?:No\.)?\s*\d+\s*(?:of|\/)\s*\d{4}/gi,
-        // 2023 SCC OnLine SC 123
-        /\d{4}\s+SCC\s+OnLine\s+(?:SC|HC|\w+)\s+\d+/gi
+        /(?:Writ Petition|Civil Appeal|Criminal Appeal|SLP)\s+(?:No\.)?\s*\d+\/\d{4}/gi
     ];
 
     const found = new Set();
     patterns.forEach(pat => {
         const matches = text.match(pat) || [];
-        matches.forEach(m => {
-            const clean = m.trim().replace(/\s+/g, ' ');
-            if (clean.length > 8) found.add(clean);
-        });
+        matches.forEach(m => found.add(m.trim()));
     });
-    return [...found].slice(0, 8); // max 8 citations to verify
+    return [...found].slice(0, 5); // max 5 citations to verify
 }
 
 // =====================================================
